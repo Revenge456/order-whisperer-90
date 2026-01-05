@@ -386,6 +386,30 @@ export type Database = {
           },
         ]
       }
+      page_permissions: {
+        Row: {
+          can_access: boolean | null
+          created_at: string | null
+          id: string
+          page_key: string
+          role: Database["public"]["Enums"]["app_role"]
+        }
+        Insert: {
+          can_access?: boolean | null
+          created_at?: string | null
+          id?: string
+          page_key: string
+          role: Database["public"]["Enums"]["app_role"]
+        }
+        Update: {
+          can_access?: boolean | null
+          created_at?: string | null
+          id?: string
+          page_key?: string
+          role?: Database["public"]["Enums"]["app_role"]
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount: number
@@ -756,6 +780,30 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       users: {
         Row: {
           created_at: string | null
@@ -976,9 +1024,26 @@ export type Database = {
       }
     }
     Functions: {
-      [_ in never]: never
+      can_access_page: {
+        Args: { _page_key: string; _user_id: string }
+        Returns: boolean
+      }
+      get_user_role: {
+        Args: { _user_id: string }
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      normalize_search: { Args: { text_value: string }; Returns: string }
+      unaccent: { Args: { "": string }; Returns: string }
     }
     Enums: {
+      app_role: "admin" | "employee"
       conversation_mode: "ai" | "manual"
       delivery_status:
         | "sin_asignar"
@@ -1130,6 +1195,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["admin", "employee"],
       conversation_mode: ["ai", "manual"],
       delivery_status: [
         "sin_asignar",
