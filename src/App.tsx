@@ -7,7 +7,6 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Customers from "./pages/Customers";
 import Orders from "./pages/Orders";
-import Payments from "./pages/Payments";
 import Deliveries from "./pages/Deliveries";
 import Products from "./pages/Products";
 import Reports from "./pages/Reports";
@@ -28,11 +27,12 @@ const App = () => (
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/customers" element={<Customers />} />
           <Route path="/orders" element={<Orders />} />
-          <Route path="/payments" element={<Payments />} />
           <Route path="/deliveries" element={<Deliveries />} />
           <Route path="/products" element={<Products />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/settings" element={<Settings />} />
+          {/* Redirect old payments route to orders */}
+          <Route path="/payments" element={<Navigate to="/orders" replace />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

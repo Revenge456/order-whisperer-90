@@ -2,7 +2,6 @@ import {
   LayoutDashboard, 
   Users, 
   ShoppingCart, 
-  CreditCard, 
   Truck, 
   Package, 
   BarChart3, 
@@ -28,7 +27,6 @@ const mainNavItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Clientes", url: "/customers", icon: Users },
   { title: "Pedidos", url: "/orders", icon: ShoppingCart },
-  { title: "Pagos", url: "/payments", icon: CreditCard },
   { title: "Entregas", url: "/deliveries", icon: Truck },
   { title: "Productos", url: "/products", icon: Package },
 ];
