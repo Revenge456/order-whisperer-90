@@ -58,6 +58,30 @@ export type Database = {
           },
         ]
       }
+      bolivia_fitness_docs: {
+        Row: {
+          content: string
+          created_at: string | null
+          embedding: string | null
+          id: string
+          metadata: Json | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          embedding?: string | null
+          id?: string
+          metadata?: Json | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          embedding?: string | null
+          id?: string
+          metadata?: Json | null
+        }
+        Relationships: []
+      }
       customers: {
         Row: {
           address: string | null
@@ -65,6 +89,7 @@ export type Database = {
             | Database["public"]["Enums"]["conversation_mode"]
             | null
           created_at: string | null
+          email: string | null
           id: string
           is_active: boolean | null
           last_order_at: string | null
@@ -82,6 +107,7 @@ export type Database = {
             | Database["public"]["Enums"]["conversation_mode"]
             | null
           created_at?: string | null
+          email?: string | null
           id?: string
           is_active?: boolean | null
           last_order_at?: string | null
@@ -99,6 +125,7 @@ export type Database = {
             | Database["public"]["Enums"]["conversation_mode"]
             | null
           created_at?: string | null
+          email?: string | null
           id?: string
           is_active?: boolean | null
           last_order_at?: string | null
@@ -1038,6 +1065,15 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      match_documents: {
+        Args: { filter?: Json; match_count?: number; query_embedding: string }
+        Returns: {
+          content: string
+          id: string
+          metadata: Json
+          similarity: number
+        }[]
       }
       normalize_search: { Args: { text_value: string }; Returns: string }
       unaccent: { Args: { "": string }; Returns: string }
