@@ -10,7 +10,7 @@ import Orders from "./pages/Orders";
 import Deliveries from "./pages/Deliveries";
 import Products from "./pages/Products";
 import Reports from "./pages/Reports";
-import Settings from "./pages/Settings";
+import Team from "./pages/Team";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,9 +30,10 @@ const App = () => (
           <Route path="/deliveries" element={<Deliveries />} />
           <Route path="/products" element={<Products />} />
           <Route path="/reports" element={<Reports />} />
-          <Route path="/settings" element={<Settings />} />
-          {/* Redirect old payments route to orders */}
+          <Route path="/team" element={<Team />} />
+          {/* Redirect old routes */}
           <Route path="/payments" element={<Navigate to="/orders" replace />} />
+          <Route path="/settings" element={<Navigate to="/team" replace />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

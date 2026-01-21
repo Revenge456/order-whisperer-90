@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { Separator } from '@/components/ui/separator';
 import {
   Select,
   SelectContent,
@@ -21,6 +22,7 @@ import {
 } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
 import { useCreateProduct, useUpdateProduct, useProductCategories } from '@/hooks/useProducts';
+import { CustomFieldsManager } from '@/components/ui/custom-fields';
 import type { Tables } from '@/integrations/supabase/types';
 
 type Product = Tables<'products'>;
@@ -45,6 +47,7 @@ export function ProductModal({ open, onOpenChange, product }: ProductModalProps)
     low_stock_threshold: '5',
     category_id: '',
     is_active: true,
+    custom_fields: {} as Record<string, string | number | boolean>,
   });
 
   useEffect(() => {
@@ -57,6 +60,7 @@ export function ProductModal({ open, onOpenChange, product }: ProductModalProps)
         low_stock_threshold: product.low_stock_threshold?.toString() || '5',
         category_id: product.category_id || '',
         is_active: product.is_active ?? true,
+        custom_fields: (product as any).custom_fields || {},
       });
     } else {
       setFormData({
@@ -67,6 +71,7 @@ export function ProductModal({ open, onOpenChange, product }: ProductModalProps)
         low_stock_threshold: '5',
         category_id: '',
         is_active: true,
+        custom_fields: {},
       });
     }
   }, [product, open]);
@@ -86,6 +91,7 @@ export function ProductModal({ open, onOpenChange, product }: ProductModalProps)
       low_stock_threshold: parseInt(formData.low_stock_threshold) || 5,
       category_id: formData.category_id || null,
       is_active: formData.is_active,
+      custom_fields: formData.custom_fields,
     };
 
     try {
@@ -107,10 +113,10 @@ export function ProductModal({ open, onOpenChange, product }: ProductModalProps)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] bg-card border-border max-h-[90vh] overflow-y-auto">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="text-foreground">
               {isEditing ? 'Editar Producto' : 'Nuevo Producto'}
             </DialogTitle>
             <DialogDescription>
@@ -129,7 +135,7 @@ export function ProductModal({ open, onOpenChange, product }: ProductModalProps)
                 onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                 placeholder="Nombre del producto"
                 required
-                className="bg-secondary/50"
+                className="bg-input border-border"
               />
             </div>
 
@@ -139,7 +145,7 @@ export function ProductModal({ open, onOpenChange, product }: ProductModalProps)
                 value={formData.category_id}
                 onValueChange={(value) => setFormData(prev => ({ ...prev, category_id: value }))}
               >
-                <SelectTrigger className="bg-secondary/50">
+                <SelectTrigger className="bg-input border-border">
                   <SelectValue placeholder="Seleccionar categoría" />
                 </SelectTrigger>
                 <SelectContent>
@@ -159,7 +165,7 @@ export function ProductModal({ open, onOpenChange, product }: ProductModalProps)
                 value={formData.description}
                 onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                 placeholder="Descripción del producto"
-                className="bg-secondary/50 min-h-[80px]"
+                className="bg-input border-border min-h-[80px]"
               />
             </div>
 
@@ -175,7 +181,7 @@ export function ProductModal({ open, onOpenChange, product }: ProductModalProps)
                   onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
                   placeholder="0.00"
                   required
-                  className="bg-secondary/50"
+                  className="bg-input border-border"
                 />
               </div>
               <div className="grid gap-2">
@@ -187,7 +193,7 @@ export function ProductModal({ open, onOpenChange, product }: ProductModalProps)
                   value={formData.stock}
                   onChange={(e) => setFormData(prev => ({ ...prev, stock: e.target.value }))}
                   placeholder="0"
-                  className="bg-secondary/50"
+                  className="bg-input border-border"
                 />
               </div>
             </div>
@@ -201,7 +207,7 @@ export function ProductModal({ open, onOpenChange, product }: ProductModalProps)
                 value={formData.low_stock_threshold}
                 onChange={(e) => setFormData(prev => ({ ...prev, low_stock_threshold: e.target.value }))}
                 placeholder="5"
-                className="bg-secondary/50"
+                className="bg-input border-border"
               />
             </div>
 
@@ -213,6 +219,13 @@ export function ProductModal({ open, onOpenChange, product }: ProductModalProps)
                 onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_active: checked }))}
               />
             </div>
+
+            <Separator className="bg-border" />
+
+            <CustomFieldsManager
+              fields={formData.custom_fields}
+              onChange={(fields) => setFormData(prev => ({ ...prev, custom_fields: fields }))}
+            />
           </div>
 
           <DialogFooter>
@@ -221,6 +234,7 @@ export function ProductModal({ open, onOpenChange, product }: ProductModalProps)
               variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={isLoading}
+              className="border-border"
             >
               Cancelar
             </Button>

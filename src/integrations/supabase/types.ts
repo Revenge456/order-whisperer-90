@@ -89,6 +89,7 @@ export type Database = {
             | Database["public"]["Enums"]["conversation_mode"]
             | null
           created_at: string | null
+          custom_fields: Json | null
           email: string | null
           id: string
           is_active: boolean | null
@@ -107,6 +108,7 @@ export type Database = {
             | Database["public"]["Enums"]["conversation_mode"]
             | null
           created_at?: string | null
+          custom_fields?: Json | null
           email?: string | null
           id?: string
           is_active?: boolean | null
@@ -125,6 +127,7 @@ export type Database = {
             | Database["public"]["Enums"]["conversation_mode"]
             | null
           created_at?: string | null
+          custom_fields?: Json | null
           email?: string | null
           id?: string
           is_active?: boolean | null
@@ -341,6 +344,7 @@ export type Database = {
           completed_at: string | null
           confirmed_at: string | null
           created_at: string | null
+          custom_fields: Json | null
           customer_id: string
           id: string
           notes: string | null
@@ -354,6 +358,7 @@ export type Database = {
           completed_at?: string | null
           confirmed_at?: string | null
           created_at?: string | null
+          custom_fields?: Json | null
           customer_id: string
           id?: string
           notes?: string | null
@@ -367,6 +372,7 @@ export type Database = {
           completed_at?: string | null
           confirmed_at?: string | null
           created_at?: string | null
+          custom_fields?: Json | null
           customer_id?: string
           id?: string
           notes?: string | null
@@ -552,6 +558,7 @@ export type Database = {
         Row: {
           category_id: string | null
           created_at: string | null
+          custom_fields: Json | null
           description: string | null
           id: string
           image_url: string | null
@@ -565,6 +572,7 @@ export type Database = {
         Insert: {
           category_id?: string | null
           created_at?: string | null
+          custom_fields?: Json | null
           description?: string | null
           id?: string
           image_url?: string | null
@@ -578,6 +586,7 @@ export type Database = {
         Update: {
           category_id?: string | null
           created_at?: string | null
+          custom_fields?: Json | null
           description?: string | null
           id?: string
           image_url?: string | null
