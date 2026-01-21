@@ -5,7 +5,7 @@ import {
   Truck, 
   Package, 
   BarChart3, 
-  Settings,
+  UsersRound,
   Dumbbell
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
@@ -33,7 +33,7 @@ const mainNavItems = [
 
 const secondaryNavItems = [
   { title: "Reportes", url: "/reports", icon: BarChart3 },
-  { title: "Configuración", url: "/settings", icon: Settings },
+  { title: "Equipo", url: "/team", icon: UsersRound },
 ];
 
 export function AppSidebar() {

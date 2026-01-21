@@ -12,8 +12,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { Separator } from '@/components/ui/separator';
 import { Loader2 } from 'lucide-react';
 import { useCreateCustomer, useUpdateCustomer } from '@/hooks/useCustomers';
+import { CustomFieldsManager } from '@/components/ui/custom-fields';
 import type { Tables } from '@/integrations/supabase/types';
 
 type Customer = Tables<'customers'>;
@@ -35,6 +37,7 @@ export function CustomerModal({ open, onOpenChange, customer }: CustomerModalPro
     address: '',
     notes: '',
     is_active: true,
+    custom_fields: {} as Record<string, string | number | boolean>,
   });
 
   useEffect(() => {
@@ -45,6 +48,7 @@ export function CustomerModal({ open, onOpenChange, customer }: CustomerModalPro
         address: customer.address || '',
         notes: customer.notes || '',
         is_active: customer.is_active ?? true,
+        custom_fields: (customer as any).custom_fields || {},
       });
     } else {
       setFormData({
@@ -53,6 +57,7 @@ export function CustomerModal({ open, onOpenChange, customer }: CustomerModalPro
         address: '',
         notes: '',
         is_active: true,
+        custom_fields: {},
       });
     }
   }, [customer, open]);
@@ -83,10 +88,10 @@ export function CustomerModal({ open, onOpenChange, customer }: CustomerModalPro
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] bg-card border-border max-h-[90vh] overflow-y-auto">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="text-foreground">
               {isEditing ? 'Editar Cliente' : 'Nuevo Cliente'}
             </DialogTitle>
             <DialogDescription>
@@ -104,7 +109,7 @@ export function CustomerModal({ open, onOpenChange, customer }: CustomerModalPro
                 value={formData.name}
                 onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                 placeholder="Nombre completo"
-                className="bg-secondary/50"
+                className="bg-input border-border"
               />
             </div>
 
@@ -116,7 +121,7 @@ export function CustomerModal({ open, onOpenChange, customer }: CustomerModalPro
                 onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
                 placeholder="+591 70000000"
                 required
-                className="bg-secondary/50"
+                className="bg-input border-border"
               />
             </div>
 
@@ -127,7 +132,7 @@ export function CustomerModal({ open, onOpenChange, customer }: CustomerModalPro
                 value={formData.address}
                 onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
                 placeholder="Dirección de entrega"
-                className="bg-secondary/50 min-h-[80px]"
+                className="bg-input border-border min-h-[80px]"
               />
             </div>
 
@@ -138,7 +143,7 @@ export function CustomerModal({ open, onOpenChange, customer }: CustomerModalPro
                 value={formData.notes}
                 onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
                 placeholder="Observaciones adicionales"
-                className="bg-secondary/50 min-h-[60px]"
+                className="bg-input border-border min-h-[60px]"
               />
             </div>
 
@@ -150,6 +155,13 @@ export function CustomerModal({ open, onOpenChange, customer }: CustomerModalPro
                 onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_active: checked }))}
               />
             </div>
+
+            <Separator className="bg-border" />
+
+            <CustomFieldsManager
+              fields={formData.custom_fields}
+              onChange={(fields) => setFormData(prev => ({ ...prev, custom_fields: fields }))}
+            />
           </div>
 
           <DialogFooter>
@@ -158,6 +170,7 @@ export function CustomerModal({ open, onOpenChange, customer }: CustomerModalPro
               variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={isLoading}
+              className="border-border"
             >
               Cancelar
             </Button>
