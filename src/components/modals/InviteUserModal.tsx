@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Mail, User, Copy, Check, Link } from "lucide-react";
+import { Loader2, Mail, User, Lock, Copy, Check, Eye, EyeOff } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -26,6 +26,7 @@ import { useQueryClient } from "@tanstack/react-query";
 const inviteSchema = z.object({
   fullName: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
   email: z.string().email("Email inválido"),
+  password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
   role: z.enum(["admin", "employee"]),
 });
 
@@ -34,17 +35,37 @@ interface InviteUserModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
+interface CreatedUserData {
+  email: string;
+  password: string;
+  fullName: string;
+  role: string;
+}
+
 export function InviteUserModal({ open, onOpenChange }: InviteUserModalProps) {
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
+    password: "",
     role: "employee" as "admin" | "employee",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
-  const [resetLink, setResetLink] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [createdUser, setCreatedUser] = useState<CreatedUserData | null>(null);
+  const [copied, setCopied] = useState<"email" | "password" | "all" | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
   const queryClient = useQueryClient();
+
+  const generatePassword = () => {
+    const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%";
+    let password = "";
+    for (let i = 0; i < 12; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    // Ensure at least one uppercase, one number
+    password = password.slice(0, 10) + "A1";
+    setFormData({ ...formData, password });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,10 +85,8 @@ export function InviteUserModal({ open, onOpenChange }: InviteUserModalProps) {
     }
 
     setIsLoading(true);
-    setResetLink(null);
 
     try {
-      // Get current session for auth header
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
@@ -75,12 +94,12 @@ export function InviteUserModal({ open, onOpenChange }: InviteUserModalProps) {
         return;
       }
 
-      // Call edge function to create user
       const response = await supabase.functions.invoke('create-user', {
         body: {
           email: formData.email,
           fullName: formData.fullName,
           role: formData.role,
+          temporaryPassword: formData.password,
         },
       });
 
@@ -94,18 +113,16 @@ export function InviteUserModal({ open, onOpenChange }: InviteUserModalProps) {
         throw new Error(data.error || 'Error al crear usuario');
       }
 
-      // Store reset link if available
-      if (data.resetLink) {
-        setResetLink(data.resetLink);
-      }
+      // Store created user data to show credentials
+      setCreatedUser({
+        email: formData.email,
+        password: formData.password,
+        fullName: formData.fullName,
+        role: formData.role === 'admin' ? 'Administrador' : 'Empleado',
+      });
 
       queryClient.invalidateQueries({ queryKey: ['team'] });
       toast.success('Usuario creado exitosamente');
-
-      // Don't close modal if we have a reset link to show
-      if (!data.resetLink) {
-        handleClose();
-      }
 
     } catch (error) {
       console.error('Error creating user:', error);
@@ -119,20 +136,27 @@ export function InviteUserModal({ open, onOpenChange }: InviteUserModalProps) {
     setFormData({
       fullName: "",
       email: "",
+      password: "",
       role: "employee",
     });
     setErrors({});
-    setResetLink(null);
-    setCopied(false);
+    setCreatedUser(null);
+    setCopied(null);
+    setShowPassword(false);
     onOpenChange(false);
   };
 
-  const copyResetLink = async () => {
-    if (resetLink) {
-      await navigator.clipboard.writeText(resetLink);
-      setCopied(true);
-      toast.success('Enlace copiado al portapapeles');
-      setTimeout(() => setCopied(false), 2000);
+  const copyToClipboard = async (text: string, type: "email" | "password" | "all") => {
+    await navigator.clipboard.writeText(text);
+    setCopied(type);
+    toast.success('Copiado al portapapeles');
+    setTimeout(() => setCopied(null), 2000);
+  };
+
+  const copyAllCredentials = () => {
+    if (createdUser) {
+      const text = `Credenciales de acceso:\nEmail: ${createdUser.email}\nContraseña: ${createdUser.password}`;
+      copyToClipboard(text, "all");
     }
   };
 
@@ -141,49 +165,121 @@ export function InviteUserModal({ open, onOpenChange }: InviteUserModalProps) {
       <DialogContent className="sm:max-w-[500px] bg-card border-border">
         <DialogHeader>
           <DialogTitle className="text-foreground">
-            {resetLink ? "Usuario Creado" : "Invitar Nuevo Usuario"}
+            {createdUser ? "¡Usuario Creado!" : "Crear Nuevo Usuario"}
           </DialogTitle>
           <DialogDescription>
-            {resetLink 
-              ? "El usuario ha sido creado. Comparte el enlace de configuración de contraseña."
-              : "Crea una cuenta para un nuevo miembro del equipo. Recibirás un enlace para compartir con el usuario."
+            {createdUser 
+              ? "Comparte estas credenciales con el nuevo miembro del equipo."
+              : "Ingresa los datos del nuevo miembro. Podrás establecer su contraseña inicial."
             }
           </DialogDescription>
         </DialogHeader>
 
-        {resetLink ? (
+        {createdUser ? (
           <div className="py-4 space-y-4">
-            <div className="p-4 bg-muted rounded-lg space-y-3">
-              <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                <Link className="w-4 h-4 text-primary" />
-                <span>Enlace de configuración de contraseña:</span>
+            <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg space-y-4">
+              <div className="text-center">
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary/20 mb-2">
+                  <Check className="w-6 h-6 text-primary" />
+                </div>
+                <h3 className="font-semibold text-foreground">{createdUser.fullName}</h3>
+                <p className="text-sm text-muted-foreground">{createdUser.role}</p>
               </div>
-              <div className="flex items-center gap-2">
-                <Input 
-                  value={resetLink} 
-                  readOnly 
-                  className="text-xs bg-background"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  onClick={copyResetLink}
-                >
-                  {copied ? (
-                    <Check className="w-4 h-4 text-green-500" />
-                  ) : (
-                    <Copy className="w-4 h-4" />
-                  )}
-                </Button>
+              
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <Label className="text-xs text-muted-foreground">Email</Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Input 
+                        value={createdUser.email} 
+                        readOnly 
+                        className="text-sm bg-background font-mono"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => copyToClipboard(createdUser.email, "email")}
+                      >
+                        {copied === "email" ? (
+                          <Check className="w-4 h-4 text-primary" />
+                        ) : (
+                          <Copy className="w-4 h-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <Label className="text-xs text-muted-foreground">Contraseña</Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <div className="relative flex-1">
+                        <Input 
+                          type={showPassword ? "text" : "password"}
+                          value={createdUser.password} 
+                          readOnly 
+                          className="text-sm bg-background font-mono pr-10"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-0 top-0 h-full"
+                          onClick={() => setShowPassword(!showPassword)}
+                        >
+                          {showPassword ? (
+                            <EyeOff className="w-4 h-4" />
+                          ) : (
+                            <Eye className="w-4 h-4" />
+                          )}
+                        </Button>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => copyToClipboard(createdUser.password, "password")}
+                      >
+                        {copied === "password" ? (
+                          <Check className="w-4 h-4 text-primary" />
+                        ) : (
+                          <Copy className="w-4 h-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Comparte este enlace con el usuario para que configure su contraseña.
-                El enlace expira en 24 horas.
-              </p>
             </div>
+
+            <Button 
+              onClick={copyAllCredentials} 
+              variant="outline" 
+              className="w-full"
+            >
+              {copied === "all" ? (
+                <>
+                  <Check className="w-4 h-4 mr-2 text-primary" />
+                  ¡Copiado!
+                </>
+              ) : (
+                <>
+                  <Copy className="w-4 h-4 mr-2" />
+                  Copiar todas las credenciales
+                </>
+              )}
+            </Button>
+
+            <p className="text-xs text-muted-foreground text-center">
+              Envía estas credenciales de forma segura al nuevo usuario. 
+              Puede cambiar su contraseña después de iniciar sesión.
+            </p>
+
             <DialogFooter>
-              <Button onClick={handleClose}>
+              <Button onClick={handleClose} className="w-full">
                 Cerrar
               </Button>
             </DialogFooter>
@@ -226,6 +322,50 @@ export function InviteUserModal({ open, onOpenChange }: InviteUserModalProps) {
                   />
                 </div>
                 {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="password">Contraseña Inicial</Label>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      value={formData.password}
+                      onChange={(e) =>
+                        setFormData({ ...formData, password: e.target.value })
+                      }
+                      placeholder="Mínimo 8 caracteres"
+                      className="pl-10 pr-10 bg-input border-border"
+                      required
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-0 top-0 h-full"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
+                    </Button>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={generatePassword}
+                  >
+                    Generar
+                  </Button>
+                </div>
+                {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
+                <p className="text-xs text-muted-foreground">
+                  Puedes escribir una contraseña o generar una automáticamente.
+                </p>
               </div>
 
               <div className="grid gap-2">

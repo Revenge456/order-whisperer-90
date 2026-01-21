@@ -68,15 +68,23 @@ Deno.serve(async (req) => {
     // Parse request body
     const { email, fullName, role, temporaryPassword }: CreateUserRequest = await req.json()
 
-    if (!email || !fullName || !role) {
+    if (!email || !fullName || !role || !temporaryPassword) {
       return new Response(
-        JSON.stringify({ error: 'Email, fullName, and role are required' }),
+        JSON.stringify({ error: 'Email, nombre, rol y contraseña son requeridos' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // Generate a secure temporary password if not provided
-    const password = temporaryPassword || crypto.randomUUID().slice(0, 12) + 'A1!'
+    // Validate password length
+    if (temporaryPassword.length < 8) {
+      return new Response(
+        JSON.stringify({ error: 'La contraseña debe tener al menos 8 caracteres' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Use the provided password
+    const password = temporaryPassword
 
     // Create user using admin API
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
@@ -121,14 +129,21 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Generate password reset link so user can set their own password
-    const { data: resetData, error: resetError } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'recovery',
-      email: email,
-      options: {
-        redirectTo: `${req.headers.get('origin') || 'https://order-whisperer-90.lovable.app'}/auth`
-      }
-    })
+    // Also create entry in users table for team management
+    const { error: usersError } = await supabaseAdmin
+      .from('users')
+      .insert({
+        id: newUser.user.id,
+        email: email,
+        full_name: fullName,
+        role: role === 'admin' ? 'admin' : 'operator',
+        is_active: true
+      })
+
+    if (usersError) {
+      console.error('Error creating users entry:', usersError)
+      // Not critical, continue
+    }
 
     return new Response(
       JSON.stringify({
@@ -139,9 +154,7 @@ Deno.serve(async (req) => {
           fullName: fullName,
           role: role
         },
-        // Include reset link info (admin can share with user)
-        resetLink: resetData?.properties?.action_link || null,
-        message: 'Usuario creado exitosamente. El usuario puede usar el enlace de recuperación para establecer su contraseña.'
+        message: 'Usuario creado exitosamente.'
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
