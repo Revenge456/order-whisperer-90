@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -28,17 +29,24 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Search, MoreHorizontal, Pencil, Trash2, Users, Shield, UserCheck } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Plus, Search, MoreHorizontal, Pencil, Trash2, Users, Shield, UserCheck, Key, Settings } from "lucide-react";
 import { useTeam, TeamMember, CreateTeamMemberData, UpdateTeamMemberData } from "@/hooks/useTeam";
 import { TeamMemberModal } from "@/components/modals/TeamMemberModal";
+import { InviteUserModal } from "@/components/modals/InviteUserModal";
+import { PermissionsModal } from "@/components/modals/PermissionsModal";
 import { filterBySearch } from "@/lib/search-utils";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { useIsAdmin } from "@/hooks/useAuth";
 
 export default function Team() {
   const { teamMembers, isLoading, createMember, updateMember, deleteMember } = useTeam();
+  const isAdmin = useIsAdmin();
   const [searchQuery, setSearchQuery] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [isPermissionsModalOpen, setIsPermissionsModalOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [memberToDelete, setMemberToDelete] = useState<TeamMember | null>(null);
@@ -52,6 +60,10 @@ export default function Team() {
   const handleCreateMember = () => {
     setSelectedMember(null);
     setIsModalOpen(true);
+  };
+
+  const handleInviteUser = () => {
+    setIsInviteModalOpen(true);
   };
 
   const handleEditMember = (member: TeamMember) => {
@@ -118,10 +130,22 @@ export default function Team() {
               Gestiona los miembros de tu equipo y sus permisos
             </p>
           </div>
-          <Button onClick={handleCreateMember} className="gap-2">
-            <Plus className="w-4 h-4" />
-            Nuevo Miembro
-          </Button>
+          {isAdmin && (
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setIsPermissionsModalOpen(true)} className="gap-2">
+                <Settings className="w-4 h-4" />
+                Permisos
+              </Button>
+              <Button variant="outline" onClick={handleInviteUser} className="gap-2">
+                <Key className="w-4 h-4" />
+                Invitar Usuario
+              </Button>
+              <Button onClick={handleCreateMember} className="gap-2">
+                <Plus className="w-4 h-4" />
+                Nuevo Miembro
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Stats Cards */}
@@ -204,7 +228,7 @@ export default function Team() {
                       <TableHead>Rol</TableHead>
                       <TableHead>Estado</TableHead>
                       <TableHead>Último Acceso</TableHead>
-                      <TableHead className="text-right">Acciones</TableHead>
+                      {isAdmin && <TableHead className="text-right">Acciones</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -236,31 +260,33 @@ export default function Team() {
                               })
                             : "Nunca"}
                         </TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <MoreHorizontal className="w-4 h-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="bg-popover border-border">
-                              <DropdownMenuItem
-                                onClick={() => handleEditMember(member)}
-                                className="gap-2"
-                              >
-                                <Pencil className="w-4 h-4" />
-                                Editar
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleDeleteClick(member)}
-                                className="gap-2 text-destructive focus:text-destructive"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                                Eliminar
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
+                        {isAdmin && (
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                  <MoreHorizontal className="w-4 h-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="bg-popover border-border">
+                                <DropdownMenuItem
+                                  onClick={() => handleEditMember(member)}
+                                  className="gap-2"
+                                >
+                                  <Pencil className="w-4 h-4" />
+                                  Editar
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleDeleteClick(member)}
+                                  className="gap-2 text-destructive focus:text-destructive"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                  Eliminar
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        )}
                       </TableRow>
                     ))}
                   </TableBody>
@@ -277,6 +303,16 @@ export default function Team() {
         member={selectedMember}
         onSave={handleSaveMember}
         isLoading={createMember.isPending || updateMember.isPending}
+      />
+
+      <InviteUserModal
+        open={isInviteModalOpen}
+        onOpenChange={setIsInviteModalOpen}
+      />
+
+      <PermissionsModal
+        open={isPermissionsModalOpen}
+        onOpenChange={setIsPermissionsModalOpen}
       />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

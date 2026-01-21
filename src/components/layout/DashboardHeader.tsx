@@ -1,4 +1,4 @@
-import { Bell, Search, User, LogOut, Menu } from "lucide-react";
+import { Bell, Search, User, LogOut, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -11,10 +11,37 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
+import { useSession, useUserRole, useSignOut } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function DashboardHeader() {
-  // TODO: Replace with real auth when Supabase is connected
-  const user = { email: "admin@boliviafitness.com", name: "Administrador" };
+  const { user, loading: sessionLoading } = useSession();
+  const { data: role, isLoading: roleLoading } = useUserRole();
+  const signOut = useSignOut();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await signOut.mutateAsync();
+    navigate("/auth");
+  };
+
+  const displayName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Usuario";
+  const isAdmin = role === "admin";
+
+  if (sessionLoading) {
+    return (
+      <header className="h-16 border-b border-border bg-card/50 backdrop-blur-sm px-6 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
+        </div>
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-8 w-8 rounded-full" />
+          <Skeleton className="h-4 w-24" />
+        </div>
+      </header>
+    );
+  }
 
   return (
     <header className="h-16 border-b border-border bg-card/50 backdrop-blur-sm px-6 flex items-center justify-between gap-4">
@@ -66,14 +93,27 @@ export function DashboardHeader() {
               <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
                 <User className="w-4 h-4 text-primary" />
               </div>
-              <span className="hidden md:block text-sm font-medium">{user.name}</span>
+              <div className="hidden md:flex flex-col items-start">
+                <span className="text-sm font-medium">{displayName}</span>
+                {!roleLoading && (
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                    {isAdmin && <Shield className="w-3 h-3" />}
+                    {isAdmin ? "Admin" : "Empleado"}
+                  </span>
+                )}
+              </div>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>
               <div className="flex flex-col">
-                <span>{user.name}</span>
-                <span className="text-xs text-muted-foreground font-normal">{user.email}</span>
+                <span>{displayName}</span>
+                <span className="text-xs text-muted-foreground font-normal">{user?.email}</span>
+                {!roleLoading && (
+                  <Badge variant="outline" className={`mt-2 w-fit ${isAdmin ? 'bg-primary/20 text-primary border-primary/30' : 'bg-muted text-muted-foreground'}`}>
+                    {isAdmin ? "Administrador" : "Empleado"}
+                  </Badge>
+                )}
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
@@ -82,9 +122,13 @@ export function DashboardHeader() {
               Perfil
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-destructive focus:text-destructive">
+            <DropdownMenuItem 
+              className="text-destructive focus:text-destructive cursor-pointer"
+              onClick={handleSignOut}
+              disabled={signOut.isPending}
+            >
               <LogOut className="w-4 h-4 mr-2" />
-              Cerrar Sesión
+              {signOut.isPending ? "Cerrando..." : "Cerrar Sesión"}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

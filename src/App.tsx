@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Customers from "./pages/Customers";
@@ -24,13 +25,44 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/auth" element={<Auth />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/customers" element={<Customers />} />
-          <Route path="/orders" element={<Orders />} />
-          <Route path="/deliveries" element={<Deliveries />} />
-          <Route path="/products" element={<Products />} />
-          <Route path="/reports" element={<Reports />} />
-          <Route path="/team" element={<Team />} />
+          
+          {/* Protected routes with page permissions */}
+          <Route path="/dashboard" element={
+            <ProtectedRoute pageKey="dashboard">
+              <Dashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/customers" element={
+            <ProtectedRoute pageKey="customers">
+              <Customers />
+            </ProtectedRoute>
+          } />
+          <Route path="/orders" element={
+            <ProtectedRoute pageKey="orders">
+              <Orders />
+            </ProtectedRoute>
+          } />
+          <Route path="/deliveries" element={
+            <ProtectedRoute pageKey="deliveries">
+              <Deliveries />
+            </ProtectedRoute>
+          } />
+          <Route path="/products" element={
+            <ProtectedRoute pageKey="products">
+              <Products />
+            </ProtectedRoute>
+          } />
+          <Route path="/reports" element={
+            <ProtectedRoute pageKey="reports">
+              <Reports />
+            </ProtectedRoute>
+          } />
+          <Route path="/team" element={
+            <ProtectedRoute pageKey="team">
+              <Team />
+            </ProtectedRoute>
+          } />
+          
           {/* Redirect old routes */}
           <Route path="/payments" element={<Navigate to="/orders" replace />} />
           <Route path="/settings" element={<Navigate to="/team" replace />} />
