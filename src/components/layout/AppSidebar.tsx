@@ -22,26 +22,40 @@ import {
   SidebarFooter,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { usePagePermissions, useIsAdmin } from "@/hooks/useAuth";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const mainNavItems = [
-  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Clientes", url: "/customers", icon: Users },
-  { title: "Pedidos", url: "/orders", icon: ShoppingCart },
-  { title: "Entregas", url: "/deliveries", icon: Truck },
-  { title: "Productos", url: "/products", icon: Package },
+  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, pageKey: "dashboard" },
+  { title: "Clientes", url: "/customers", icon: Users, pageKey: "customers" },
+  { title: "Pedidos", url: "/orders", icon: ShoppingCart, pageKey: "orders" },
+  { title: "Entregas", url: "/deliveries", icon: Truck, pageKey: "deliveries" },
+  { title: "Productos", url: "/products", icon: Package, pageKey: "products" },
 ];
 
 const secondaryNavItems = [
-  { title: "Reportes", url: "/reports", icon: BarChart3 },
-  { title: "Equipo", url: "/team", icon: UsersRound },
+  { title: "Reportes", url: "/reports", icon: BarChart3, pageKey: "reports" },
+  { title: "Equipo", url: "/team", icon: UsersRound, pageKey: "team" },
 ];
 
 export function AppSidebar() {
   const location = useLocation();
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
+  const { data: permissions, isLoading: permissionsLoading } = usePagePermissions();
+  const isAdmin = useIsAdmin();
 
   const isActive = (path: string) => location.pathname === path;
+
+  const canAccess = (pageKey: string) => {
+    // Admin has access to everything
+    if (isAdmin) return true;
+    // Check page permissions
+    return permissions?.[pageKey] ?? true;
+  };
+
+  const filteredMainItems = mainNavItems.filter((item) => canAccess(item.pageKey));
+  const filteredSecondaryItems = secondaryNavItems.filter((item) => canAccess(item.pageKey));
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
@@ -66,27 +80,35 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {mainNavItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isActive(item.url)}
-                    tooltip={item.title}
-                  >
-                    <NavLink 
-                      to={item.url} 
-                      className={`flex items-center gap-3 transition-all duration-200 ${
-                        isActive(item.url) 
-                          ? "text-primary bg-primary/10" 
-                          : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent"
-                      }`}
+              {permissionsLoading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <SidebarMenuItem key={i}>
+                    <Skeleton className="h-10 w-full" />
+                  </SidebarMenuItem>
+                ))
+              ) : (
+                filteredMainItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive(item.url)}
+                      tooltip={item.title}
                     >
-                      <item.icon className="w-5 h-5" />
-                      <span>{item.title}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+                      <NavLink 
+                        to={item.url} 
+                        className={`flex items-center gap-3 transition-all duration-200 ${
+                          isActive(item.url) 
+                            ? "text-primary bg-primary/10" 
+                            : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent"
+                        }`}
+                      >
+                        <item.icon className="w-5 h-5" />
+                        <span>{item.title}</span>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -97,27 +119,35 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {secondaryNavItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isActive(item.url)}
-                    tooltip={item.title}
-                  >
-                    <NavLink 
-                      to={item.url} 
-                      className={`flex items-center gap-3 transition-all duration-200 ${
-                        isActive(item.url) 
-                          ? "text-primary bg-primary/10" 
-                          : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent"
-                      }`}
+              {permissionsLoading ? (
+                Array.from({ length: 2 }).map((_, i) => (
+                  <SidebarMenuItem key={i}>
+                    <Skeleton className="h-10 w-full" />
+                  </SidebarMenuItem>
+                ))
+              ) : (
+                filteredSecondaryItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive(item.url)}
+                      tooltip={item.title}
                     >
-                      <item.icon className="w-5 h-5" />
-                      <span>{item.title}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+                      <NavLink 
+                        to={item.url} 
+                        className={`flex items-center gap-3 transition-all duration-200 ${
+                          isActive(item.url) 
+                            ? "text-primary bg-primary/10" 
+                            : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent"
+                        }`}
+                      >
+                        <item.icon className="w-5 h-5" />
+                        <span>{item.title}</span>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

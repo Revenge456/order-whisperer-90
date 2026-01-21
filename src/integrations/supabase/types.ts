@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      action_permissions: {
+        Row: {
+          can_create: boolean | null
+          can_delete: boolean | null
+          can_read: boolean | null
+          can_update: boolean | null
+          created_at: string | null
+          id: string
+          page_key: string
+          role: Database["public"]["Enums"]["app_role"]
+        }
+        Insert: {
+          can_create?: boolean | null
+          can_delete?: boolean | null
+          can_read?: boolean | null
+          can_update?: boolean | null
+          created_at?: string | null
+          id?: string
+          page_key: string
+          role: Database["public"]["Enums"]["app_role"]
+        }
+        Update: {
+          can_create?: boolean | null
+          can_delete?: boolean | null
+          can_read?: boolean | null
+          can_update?: boolean | null
+          created_at?: string | null
+          id?: string
+          page_key?: string
+          role?: Database["public"]["Enums"]["app_role"]
+        }
+        Relationships: []
+      }
       audit_log: {
         Row: {
           action: string
@@ -1062,6 +1095,10 @@ export type Database = {
     Functions: {
       can_access_page: {
         Args: { _page_key: string; _user_id: string }
+        Returns: boolean
+      }
+      can_perform_action: {
+        Args: { _action: string; _page_key: string; _user_id: string }
         Returns: boolean
       }
       get_user_role: {
