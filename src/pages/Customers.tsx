@@ -23,6 +23,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useCustomers } from "@/hooks/useCustomers";
 import { filterBySearch } from "@/lib/search-utils";
 import { CustomerModal } from "@/components/modals/CustomerModal";
+import { CustomFieldsBadges } from "@/components/ui/custom-fields";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Customer = Tables<'customers'>;
@@ -137,6 +138,7 @@ export default function Customers() {
                   <TableRow className="border-border/50">
                     <TableHead>Cliente</TableHead>
                     <TableHead>Contacto</TableHead>
+                    <TableHead>Campos Personalizados</TableHead>
                     <TableHead>Estado</TableHead>
                     <TableHead className="text-right">Pedidos</TableHead>
                     <TableHead className="text-right">Total Gastado</TableHead>
@@ -146,7 +148,7 @@ export default function Customers() {
                 <TableBody>
                   {filteredCustomers.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                         {searchTerm ? 'No se encontraron clientes con ese criterio' : 'No hay clientes registrados'}
                       </TableCell>
                     </TableRow>
@@ -182,6 +184,12 @@ export default function Customers() {
                               {customer.phone}
                             </p>
                           </div>
+                        </TableCell>
+                        <TableCell>
+                          <CustomFieldsBadges 
+                            fields={customer.custom_fields as Record<string, string | number | boolean> | null} 
+                            maxVisible={2}
+                          />
                         </TableCell>
                         <TableCell>
                           <Badge
