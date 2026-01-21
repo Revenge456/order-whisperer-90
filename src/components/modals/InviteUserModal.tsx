@@ -17,14 +17,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useCreateUser } from "@/hooks/useAuth";
-import { Loader2, Mail, Lock, User } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { Loader2, Mail, User, Copy, Check, Link } from "lucide-react";
 import { z } from "zod";
+import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 
 const inviteSchema = z.object({
   fullName: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
   email: z.string().email("Email inválido"),
-  password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres"),
   role: z.enum(["admin", "employee"]),
 });
 
@@ -37,11 +38,13 @@ export function InviteUserModal({ open, onOpenChange }: InviteUserModalProps) {
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
-    password: "",
     role: "employee" as "admin" | "employee",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const createUser = useCreateUser();
+  const [isLoading, setIsLoading] = useState(false);
+  const [resetLink, setResetLink] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const queryClient = useQueryClient();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,133 +63,212 @@ export function InviteUserModal({ open, onOpenChange }: InviteUserModalProps) {
       }
     }
 
-    createUser.mutate({
-      email: formData.email,
-      password: formData.password,
-      fullName: formData.fullName,
-      role: formData.role,
-    }, {
-      onSuccess: () => {
-        onOpenChange(false);
-        setFormData({
-          fullName: "",
-          email: "",
-          password: "",
-          role: "employee",
-        });
-      },
+    setIsLoading(true);
+    setResetLink(null);
+
+    try {
+      // Get current session for auth header
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        toast.error("No hay sesión activa");
+        return;
+      }
+
+      // Call edge function to create user
+      const response = await supabase.functions.invoke('create-user', {
+        body: {
+          email: formData.email,
+          fullName: formData.fullName,
+          role: formData.role,
+        },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Error al crear usuario');
+      }
+
+      const data = response.data;
+
+      if (!data.success) {
+        throw new Error(data.error || 'Error al crear usuario');
+      }
+
+      // Store reset link if available
+      if (data.resetLink) {
+        setResetLink(data.resetLink);
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['team'] });
+      toast.success('Usuario creado exitosamente');
+
+      // Don't close modal if we have a reset link to show
+      if (!data.resetLink) {
+        handleClose();
+      }
+
+    } catch (error) {
+      console.error('Error creating user:', error);
+      toast.error(error instanceof Error ? error.message : 'Error al crear usuario');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleClose = () => {
+    setFormData({
+      fullName: "",
+      email: "",
+      role: "employee",
     });
+    setErrors({});
+    setResetLink(null);
+    setCopied(false);
+    onOpenChange(false);
+  };
+
+  const copyResetLink = async () => {
+    if (resetLink) {
+      await navigator.clipboard.writeText(resetLink);
+      setCopied(true);
+      toast.success('Enlace copiado al portapapeles');
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px] bg-card border-border">
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-[500px] bg-card border-border">
         <DialogHeader>
           <DialogTitle className="text-foreground">
-            Invitar Nuevo Usuario
+            {resetLink ? "Usuario Creado" : "Invitar Nuevo Usuario"}
           </DialogTitle>
           <DialogDescription>
-            Crea una cuenta para un nuevo miembro del equipo. El usuario recibirá un email para confirmar su cuenta.
+            {resetLink 
+              ? "El usuario ha sido creado. Comparte el enlace de configuración de contraseña."
+              : "Crea una cuenta para un nuevo miembro del equipo. Recibirás un enlace para compartir con el usuario."
+            }
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="fullName">Nombre Completo</Label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  id="fullName"
-                  value={formData.fullName}
-                  onChange={(e) =>
-                    setFormData({ ...formData, fullName: e.target.value })
-                  }
-                  placeholder="Juan Pérez"
-                  className="pl-10 bg-input border-border"
-                  required
-                />
-              </div>
-              {errors.fullName && <p className="text-sm text-destructive">{errors.fullName}</p>}
-            </div>
-            
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) =>
-                    setFormData({ ...formData, email: e.target.value })
-                  }
-                  placeholder="juan@ejemplo.com"
-                  className="pl-10 bg-input border-border"
-                  required
-                />
-              </div>
-              {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
-            </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="password">Contraseña Temporal</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  id="password"
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) =>
-                    setFormData({ ...formData, password: e.target.value })
-                  }
-                  placeholder="Mínimo 6 caracteres"
-                  className="pl-10 bg-input border-border"
-                  required
-                />
+        {resetLink ? (
+          <div className="py-4 space-y-4">
+            <div className="p-4 bg-muted rounded-lg space-y-3">
+              <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                <Link className="w-4 h-4 text-primary" />
+                <span>Enlace de configuración de contraseña:</span>
               </div>
-              {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
+              <div className="flex items-center gap-2">
+                <Input 
+                  value={resetLink} 
+                  readOnly 
+                  className="text-xs bg-background"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={copyResetLink}
+                >
+                  {copied ? (
+                    <Check className="w-4 h-4 text-green-500" />
+                  ) : (
+                    <Copy className="w-4 h-4" />
+                  )}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Comparte este enlace con el usuario para que configure su contraseña.
+                El enlace expira en 24 horas.
+              </p>
             </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="role">Rol</Label>
-              <Select
-                value={formData.role}
-                onValueChange={(value: "admin" | "employee") =>
-                  setFormData({ ...formData, role: value })
-                }
-              >
-                <SelectTrigger className="bg-input border-border">
-                  <SelectValue placeholder="Seleccionar rol" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="employee">Empleado</SelectItem>
-                  <SelectItem value="admin">Administrador</SelectItem>
-                </SelectContent>
-              </Select>
-              {errors.role && <p className="text-sm text-destructive">{errors.role}</p>}
-            </div>
+            <DialogFooter>
+              <Button onClick={handleClose}>
+                Cerrar
+              </Button>
+            </DialogFooter>
           </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              className="border-border"
-            >
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={createUser.isPending}>
-              {createUser.isPending ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Creando...
-                </>
-              ) : (
-                "Crear Usuario"
-              )}
-            </Button>
-          </DialogFooter>
-        </form>
+        ) : (
+          <form onSubmit={handleSubmit}>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="fullName">Nombre Completo</Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    id="fullName"
+                    value={formData.fullName}
+                    onChange={(e) =>
+                      setFormData({ ...formData, fullName: e.target.value })
+                    }
+                    placeholder="Juan Pérez"
+                    className="pl-10 bg-input border-border"
+                    required
+                  />
+                </div>
+                {errors.fullName && <p className="text-sm text-destructive">{errors.fullName}</p>}
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="email">Email</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) =>
+                      setFormData({ ...formData, email: e.target.value })
+                    }
+                    placeholder="juan@ejemplo.com"
+                    className="pl-10 bg-input border-border"
+                    required
+                  />
+                </div>
+                {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="role">Rol</Label>
+                <Select
+                  value={formData.role}
+                  onValueChange={(value: "admin" | "employee") =>
+                    setFormData({ ...formData, role: value })
+                  }
+                >
+                  <SelectTrigger className="bg-input border-border">
+                    <SelectValue placeholder="Seleccionar rol" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="employee">Empleado</SelectItem>
+                    <SelectItem value="admin">Administrador</SelectItem>
+                  </SelectContent>
+                </Select>
+                {errors.role && <p className="text-sm text-destructive">{errors.role}</p>}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleClose}
+                className="border-border"
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={isLoading}>
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Creando...
+                  </>
+                ) : (
+                  "Crear Usuario"
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        )}
       </DialogContent>
     </Dialog>
   );

@@ -154,37 +154,7 @@ export function useSignIn() {
   });
 }
 
-export function useSignUp() {
-  return useMutation({
-    mutationFn: async ({ email, password, fullName }: { 
-      email: string; 
-      password: string; 
-      fullName: string;
-    }) => {
-      const redirectUrl = `${window.location.origin}/`;
-      
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: redirectUrl,
-          data: {
-            full_name: fullName,
-          },
-        },
-      });
-
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      toast.success('Cuenta creada. Revisa tu email para confirmar.');
-    },
-    onError: (error: Error) => {
-      toast.error('Error: ' + error.message);
-    },
-  });
-}
+// NOTE: Public signup is disabled. Users are created by admin via edge function.
 
 export function useSignOut() {
   const queryClient = useQueryClient();
@@ -204,55 +174,5 @@ export function useSignOut() {
   });
 }
 
-// Hook para crear usuario por parte del Admin
-export function useCreateUser() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ 
-      email, 
-      password, 
-      fullName, 
-      role 
-    }: { 
-      email: string; 
-      password: string; 
-      fullName: string;
-      role: AppRole;
-    }) => {
-      // First create auth user
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth`,
-          data: {
-            full_name: fullName,
-          },
-        },
-      });
-
-      if (authError) throw authError;
-      if (!authData.user) throw new Error('No se pudo crear el usuario');
-
-      // Then assign role
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .insert({
-          user_id: authData.user.id,
-          role: role,
-        });
-
-      if (roleError) throw roleError;
-
-      return authData;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['team'] });
-      toast.success('Usuario creado exitosamente');
-    },
-    onError: (error: Error) => {
-      toast.error('Error al crear usuario: ' + error.message);
-    },
-  });
-}
+// NOTE: User creation is now handled via the create-user edge function
+// which uses the service_role key for secure admin-only user creation.
