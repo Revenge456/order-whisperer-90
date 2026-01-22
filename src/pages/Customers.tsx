@@ -1,39 +1,36 @@
 import { useState } from "react";
-import { Plus, Search, MoreHorizontal, Phone, MapPin, Edit, MessageCircle } from "lucide-react";
+import { Plus, Search, MessageCircle, MoreHorizontal, Edit } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useCustomers } from "@/hooks/useCustomers";
+import { DynamicTable, RecordDetailSheet } from "@/components/dynamic-table";
+import { AIAgentConfig } from "@/components/settings/AIAgentConfig";
+import { useCustomers, useUpdateCustomer } from "@/hooks/useCustomers";
+import { useColumnDefinitions } from "@/hooks/useColumnDefinitions";
+import { useIsAdmin } from "@/hooks/useAuth";
 import { filterBySearch } from "@/lib/search-utils";
-import { CustomerModal } from "@/components/modals/CustomerModal";
-import { CustomFieldsBadges } from "@/components/ui/custom-fields";
 import type { Tables } from "@/integrations/supabase/types";
+import { toast } from "sonner";
 
 type Customer = Tables<'customers'>;
 
 export default function Customers() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
   
   const { data: customers, isLoading } = useCustomers();
+  const { data: columns = [] } = useColumnDefinitions('customers');
+  const updateCustomer = useUpdateCustomer();
+  const isAdmin = useIsAdmin();
 
   const filteredCustomers = filterBySearch(
     customers || [],
@@ -41,19 +38,24 @@ export default function Customers() {
     ['name', 'phone', 'address']
   );
 
-  const handleEdit = (customer: Customer) => {
-    setEditingCustomer(customer);
-    setIsModalOpen(true);
-  };
-
-  const handleNewCustomer = () => {
-    setEditingCustomer(null);
-    setIsModalOpen(true);
+  const handleRowClick = (customer: Customer) => {
+    setSelectedCustomer(customer);
+    setIsDetailOpen(true);
   };
 
   const handleWhatsApp = (phone: string) => {
     const cleanPhone = phone.replace(/[^0-9]/g, '');
     window.open(`https://wa.me/${cleanPhone}`, '_blank');
+  };
+
+  const handleSave = async (updates: Partial<Customer>) => {
+    if (!selectedCustomer) return;
+    try {
+      await updateCustomer.mutateAsync({ id: selectedCustomer.id, ...updates });
+      toast.success('Cliente actualizado');
+    } catch (error) {
+      // Error handled by mutation
+    }
   };
 
   const totalSpent = customers?.reduce((sum, c) => sum + (c.total_spent || 0), 0) || 0;
@@ -66,12 +68,8 @@ export default function Customers() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-foreground">Clientes</h1>
-            <p className="text-muted-foreground mt-1">Gestiona tu base de clientes</p>
+            <p className="text-muted-foreground mt-1">Gestiona tu base de clientes con tablas dinámicas</p>
           </div>
-          <Button onClick={handleNewCustomer} className="bg-primary text-primary-foreground hover:bg-primary/90">
-            <Plus className="w-4 h-4 mr-2" />
-            Nuevo Cliente
-          </Button>
         </div>
 
         {/* Search */}
@@ -80,7 +78,7 @@ export default function Customers() {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por nombre, teléfono o dirección... (ignora acentos)"
+                placeholder="Buscar por nombre, teléfono o dirección..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10 bg-secondary/50 border-border/50"
@@ -117,142 +115,53 @@ export default function Customers() {
           </Card>
         </div>
 
-        {/* Customers Table */}
+        {/* AI Agent Config (Admin only) */}
+        {isAdmin && <AIAgentConfig />}
+
+        {/* Dynamic Table */}
         <Card className="glass border-border/50">
           <CardHeader>
             <CardTitle>Lista de Clientes</CardTitle>
             <CardDescription>
-              {filteredCustomers.length} cliente(s) encontrado(s)
+              {filteredCustomers.length} cliente(s) encontrado(s) • Haz clic en una fila para ver detalles
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
-              <div className="space-y-3">
-                {[...Array(5)].map((_, i) => (
-                  <Skeleton key={i} className="h-16 w-full" />
-                ))}
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-border/50">
-                    <TableHead>Cliente</TableHead>
-                    <TableHead>Contacto</TableHead>
-                    <TableHead>Campos Personalizados</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead className="text-right">Pedidos</TableHead>
-                    <TableHead className="text-right">Total Gastado</TableHead>
-                    <TableHead className="w-[100px]">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredCustomers.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                        {searchTerm ? 'No se encontraron clientes con ese criterio' : 'No hay clientes registrados'}
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredCustomers.map((customer) => (
-                      <TableRow key={customer.id} className="border-border/50 hover:bg-secondary/30">
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                              <span className="text-primary font-medium text-sm">
-                                {(customer.name || 'C').slice(0, 2).toUpperCase()}
-                              </span>
-                            </div>
-                            <div>
-                              <p className="font-medium text-foreground">
-                                {customer.name || 'Sin nombre'}
-                              </p>
-                              {customer.address && (
-                                <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                  <MapPin className="w-3 h-3" />
-                                  {customer.address.length > 40 
-                                    ? customer.address.slice(0, 40) + '...' 
-                                    : customer.address}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="space-y-1">
-                            <p className="text-sm flex items-center gap-1 text-foreground">
-                              <Phone className="w-3 h-3 text-muted-foreground" />
-                              {customer.phone}
-                            </p>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <CustomFieldsBadges 
-                            fields={customer.custom_fields as Record<string, string | number | boolean> | null} 
-                            maxVisible={2}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant="outline"
-                            className={
-                              customer.is_active
-                                ? "bg-success/10 text-success border-success/30"
-                                : "bg-muted text-muted-foreground"
-                            }
-                          >
-                            {customer.is_active ? 'Activo' : 'Inactivo'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <span className="font-medium text-foreground">
-                            {customer.total_orders || 0}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <span className="font-medium text-success">
-                            Bs. {(customer.total_spent || 0).toLocaleString()}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-success hover:text-success hover:bg-success/10"
-                              onClick={() => handleWhatsApp(customer.phone)}
-                              title="WhatsApp"
-                            >
-                              <MessageCircle className="w-4 h-4" />
-                            </Button>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8">
-                                  <MoreHorizontal className="w-4 h-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleEdit(customer)}>
-                                  <Edit className="w-4 h-4 mr-2" />
-                                  Editar
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            )}
+            <DynamicTable
+              moduleKey="customers"
+              data={filteredCustomers}
+              isLoading={isLoading}
+              onRowClick={handleRowClick}
+              getRowId={(row) => row.id}
+              emptyMessage={searchTerm ? 'No se encontraron clientes' : 'No hay clientes registrados'}
+              customActions={(row) => (
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-success hover:text-success hover:bg-success/10"
+                    onClick={() => handleWhatsApp(row.phone)}
+                    title="WhatsApp"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
+            />
           </CardContent>
         </Card>
       </div>
 
-      <CustomerModal
-        open={isModalOpen}
-        onOpenChange={setIsModalOpen}
-        customer={editingCustomer}
+      {/* Record Detail Sheet */}
+      <RecordDetailSheet
+        record={selectedCustomer}
+        columns={columns}
+        open={isDetailOpen}
+        onOpenChange={setIsDetailOpen}
+        onSave={handleSave}
+        canEdit={true}
+        canDelete={isAdmin}
+        title={selectedCustomer?.name || 'Cliente'}
       />
     </DashboardLayout>
   );
