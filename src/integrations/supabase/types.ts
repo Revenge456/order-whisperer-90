@@ -849,6 +849,84 @@ export type Database = {
           },
         ]
       }
+      system_settings: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          setting_key: string
+          setting_value: Json
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          setting_key: string
+          setting_value?: Json
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          setting_key?: string
+          setting_value?: Json
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      table_column_definitions: {
+        Row: {
+          column_key: string
+          column_name: string
+          column_order: number
+          column_type: Database["public"]["Enums"]["column_type"]
+          column_width: number | null
+          created_at: string | null
+          default_value: string | null
+          id: string
+          is_required: boolean
+          is_system: boolean
+          is_visible: boolean
+          module_key: string
+          options: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          column_key: string
+          column_name: string
+          column_order?: number
+          column_type?: Database["public"]["Enums"]["column_type"]
+          column_width?: number | null
+          created_at?: string | null
+          default_value?: string | null
+          id?: string
+          is_required?: boolean
+          is_system?: boolean
+          is_visible?: boolean
+          module_key: string
+          options?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          column_key?: string
+          column_name?: string
+          column_order?: number
+          column_type?: Database["public"]["Enums"]["column_type"]
+          column_width?: number | null
+          created_at?: string | null
+          default_value?: string | null
+          id?: string
+          is_required?: boolean
+          is_system?: boolean
+          is_visible?: boolean
+          module_key?: string
+          options?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -1126,6 +1204,18 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "employee"
+      column_type:
+        | "text"
+        | "number"
+        | "date"
+        | "boolean"
+        | "select"
+        | "multi_select"
+        | "status"
+        | "email"
+        | "phone"
+        | "file"
+        | "url"
       conversation_mode: "ai" | "manual"
       delivery_status:
         | "sin_asignar"
@@ -1278,6 +1368,19 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "employee"],
+      column_type: [
+        "text",
+        "number",
+        "date",
+        "boolean",
+        "select",
+        "multi_select",
+        "status",
+        "email",
+        "phone",
+        "file",
+        "url",
+      ],
       conversation_mode: ["ai", "manual"],
       delivery_status: [
         "sin_asignar",
