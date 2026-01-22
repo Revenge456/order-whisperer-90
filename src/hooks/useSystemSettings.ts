@@ -32,14 +32,15 @@ export function useSystemSettings() {
 }
 
 export function useAIAgentSettings() {
-  const { data: settings, ...rest } = useSystemSettings();
-  
-  const aiSettings = settings?.find(s => s.setting_key === 'ai_agent_mode');
-  
+  // AI Agent is always enabled at global level
+  // Only per-customer overrides are allowed
   return {
-    data: aiSettings?.setting_value as unknown as AIAgentSettings | undefined,
-    settingId: aiSettings?.id,
-    ...rest,
+    data: { 
+      enabled: true, // Always true - cannot be disabled globally
+      default_for_new_customers: true 
+    } as AIAgentSettings,
+    isLoading: false,
+    error: null,
   };
 }
 

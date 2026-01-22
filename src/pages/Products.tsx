@@ -1,18 +1,9 @@
 import { useState } from "react";
-import { Plus, Search, Edit, Package, AlertTriangle, MoreHorizontal } from "lucide-react";
+import { Plus, Search, Package, AlertTriangle } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -20,16 +11,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useProducts, useProductCategories, useLowStockProducts } from "@/hooks/useProducts";
+import { useProducts, useProductCategories, useLowStockProducts, useUpdateProduct } from "@/hooks/useProducts";
 import { filterBySearch } from "@/lib/search-utils";
 import { ProductModal } from "@/components/modals/ProductModal";
+import { DynamicTable, RecordDetailSheet } from "@/components/dynamic-table";
+import { useColumnDefinitions } from "@/hooks/useColumnDefinitions";
+import { useIsAdmin } from "@/hooks/useAuth";
+import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Product = Tables<'products'>;
@@ -39,10 +28,15 @@ export default function Products() {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [selectedRecord, setSelectedRecord] = useState<Product | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   const { data: products, isLoading } = useProducts();
   const { data: categories } = useProductCategories();
   const { data: lowStockProducts } = useLowStockProducts();
+  const { data: columns, isLoading: columnsLoading } = useColumnDefinitions('products');
+  const updateProduct = useUpdateProduct();
+  const isAdmin = useIsAdmin();
 
   const filteredProducts = filterBySearch(
     products?.filter(p => categoryFilter === "all" || p.category_id === categoryFilter) || [],
@@ -50,18 +44,37 @@ export default function Products() {
     ['name', 'description']
   );
 
-  const handleEdit = (product: Product) => {
-    setEditingProduct(product);
-    setIsModalOpen(true);
-  };
-
   const handleNewProduct = () => {
     setEditingProduct(null);
     setIsModalOpen(true);
   };
 
+  const handleRowClick = (record: Record<string, unknown>) => {
+    setSelectedRecord(record as unknown as Product);
+    setIsDetailOpen(true);
+  };
+
+  const handleSave = async (updates: Partial<Record<string, unknown>>) => {
+    if (!selectedRecord) return;
+    try {
+      await updateProduct.mutateAsync({
+        id: selectedRecord.id,
+        ...updates,
+      });
+      toast.success('Producto actualizado');
+    } catch (error) {
+      toast.error('Error al actualizar producto');
+    }
+  };
+
   const activeProducts = products?.filter(p => p.is_active).length || 0;
   const outOfStockProducts = products?.filter(p => p.stock === 0).length || 0;
+
+  // Transform products for DynamicTable
+  const tableData = filteredProducts.map((product: any) => ({
+    ...product,
+    category_name: product.product_categories?.name || 'Sin categoría',
+  }));
 
   return (
     <DashboardLayout>
@@ -164,130 +177,32 @@ export default function Products() {
           </Card>
         )}
 
-        {/* Products Table */}
-        <Card className="glass border-border/50">
-          <CardHeader>
-            <CardTitle>Catálogo de Productos</CardTitle>
-            <CardDescription>
-              {filteredProducts.length} producto(s) encontrado(s)
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="space-y-3">
-                {[...Array(5)].map((_, i) => (
-                  <Skeleton key={i} className="h-16 w-full" />
-                ))}
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-border/50">
-                    <TableHead>Producto</TableHead>
-                    <TableHead>Categoría</TableHead>
-                    <TableHead className="text-right">Precio</TableHead>
-                    <TableHead className="text-right">Stock</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead className="w-[50px]"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredProducts.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                        {searchTerm ? 'No se encontraron productos con ese criterio' : 'No hay productos registrados'}
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredProducts.map((product: any) => {
-                      const isLowStock = product.stock <= (product.low_stock_threshold || 5) && product.stock > 0;
-                      const isOutOfStock = product.stock === 0;
-
-                      return (
-                        <TableRow key={product.id} className="border-border/50 hover:bg-secondary/30">
-                          <TableCell>
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-lg bg-secondary/50 flex items-center justify-center">
-                                <Package className="w-5 h-5 text-muted-foreground" />
-                              </div>
-                              <div>
-                                <span className="font-medium text-foreground">{product.name}</span>
-                                {product.description && (
-                                  <p className="text-xs text-muted-foreground truncate max-w-[200px]">
-                                    {product.description}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="secondary" className="bg-secondary/50">
-                              {product.product_categories?.name || 'Sin categoría'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <span className="font-medium text-foreground">
-                              Bs. {product.price?.toLocaleString()}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <span
-                              className={`font-medium ${
-                                isOutOfStock
-                                  ? "text-destructive"
-                                  : isLowStock
-                                  ? "text-warning"
-                                  : "text-foreground"
-                              }`}
-                            >
-                              {product.stock}
-                              {isLowStock && !isOutOfStock && (
-                                <AlertTriangle className="w-3 h-3 inline ml-1" />
-                              )}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant="outline"
-                              className={
-                                product.is_active
-                                  ? "bg-success/10 text-success border-success/30"
-                                  : "bg-muted text-muted-foreground"
-                              }
-                            >
-                              {product.is_active ? "Activo" : "Inactivo"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8">
-                                  <MoreHorizontal className="w-4 h-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleEdit(product)}>
-                                  <Edit className="w-4 h-4 mr-2" />
-                                  Editar
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
+        {/* Dynamic Products Table */}
+        <DynamicTable
+          moduleKey="products"
+          data={tableData}
+          isLoading={isLoading || columnsLoading}
+          onRowClick={handleRowClick}
+          getRowId={(row) => row.id as string}
+          emptyMessage={searchTerm ? 'No se encontraron productos con ese criterio' : 'No hay productos registrados'}
+        />
       </div>
 
       <ProductModal
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
         product={editingProduct}
+      />
+
+      <RecordDetailSheet
+        open={isDetailOpen}
+        onOpenChange={setIsDetailOpen}
+        record={selectedRecord as unknown as Record<string, unknown>}
+        columns={columns || []}
+        title={selectedRecord?.name || 'Detalle de Producto'}
+        onSave={handleSave}
+        canEdit={isAdmin}
+        canDelete={false}
       />
     </DashboardLayout>
   );
