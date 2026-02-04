@@ -25,6 +25,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useOrders, usePendingPayments, useUpdatePayment } from "@/hooks/useOrders";
 import { filterBySearch } from "@/lib/search-utils";
 import { PaymentModal } from "@/components/modals/PaymentModal";
+import { PaymentStatusSelect } from "@/components/orders/PaymentStatusSelect";
+import { PaymentReceiptButton } from "@/components/orders/PaymentReceiptButton";
+import { N8nWebhookConfig } from "@/components/orders/N8nWebhookConfig";
 import type { Tables, Enums } from "@/integrations/supabase/types";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -122,6 +125,7 @@ export default function Orders() {
             <h1 className="text-3xl font-bold text-foreground">Pedidos</h1>
             <p className="text-muted-foreground mt-1">Gestión de pedidos y pagos</p>
           </div>
+          <N8nWebhookConfig />
         </div>
 
         {/* Stats Cards */}
@@ -236,7 +240,7 @@ export default function Orders() {
                         <TableHead>Estado Pago</TableHead>
                         <TableHead className="text-right">Total</TableHead>
                         <TableHead className="text-right">Fecha</TableHead>
-                        <TableHead className="w-[50px]"></TableHead>
+                        <TableHead className="w-[100px]">Acciones</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -250,7 +254,6 @@ export default function Orders() {
                         filteredOrders.map((order) => {
                           const orderStatus = order.status as OrderStatus;
                           const StatusIcon = orderStatusConfig[orderStatus]?.icon || Clock;
-                          const paymentStatus = order.payment_status;
                           
                           return (
                             <TableRow key={order.id} className="border-border/50 hover:bg-secondary/30">
@@ -271,12 +274,16 @@ export default function Orders() {
                                   {orderStatusConfig[orderStatus]?.label || orderStatus}
                                 </Badge>
                               </TableCell>
-                              <TableCell>
-                                {paymentStatus && (
-                                  <Badge variant="outline" className={paymentStatusConfig[paymentStatus]?.style}>
-                                    {paymentStatusConfig[paymentStatus]?.label || paymentStatus}
-                                  </Badge>
-                                )}
+                              <TableCell onClick={(e) => e.stopPropagation()}>
+                                <PaymentStatusSelect
+                                  paymentId={order.payment_id}
+                                  currentStatus={order.payment_status}
+                                  orderId={order.id}
+                                  orderNumber={order.order_number}
+                                  customerName={order.customer_name}
+                                  customerPhone={order.customer_phone}
+                                  amount={order.payment_amount}
+                                />
                               </TableCell>
                               <TableCell className="text-right">
                                 <span className="font-medium text-foreground">
@@ -289,9 +296,15 @@ export default function Orders() {
                                 </span>
                               </TableCell>
                               <TableCell>
-                                <Button variant="ghost" size="icon" className="h-8 w-8">
-                                  <Eye className="w-4 h-4" />
-                                </Button>
+                                <div className="flex items-center gap-1">
+                                  <PaymentReceiptButton
+                                    screenshotUrl={order.screenshot_url}
+                                    orderNumber={order.order_number}
+                                  />
+                                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                                    <Eye className="w-4 h-4" />
+                                  </Button>
+                                </div>
                               </TableCell>
                             </TableRow>
                           );
