@@ -118,6 +118,7 @@ export type Database = {
       customers: {
         Row: {
           address: string | null
+          Anuncio: string | null
           conversation_mode:
             | Database["public"]["Enums"]["conversation_mode"]
             | null
@@ -137,6 +138,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          Anuncio?: string | null
           conversation_mode?:
             | Database["public"]["Enums"]["conversation_mode"]
             | null
@@ -156,6 +158,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          Anuncio?: string | null
           conversation_mode?:
             | Database["public"]["Enums"]["conversation_mode"]
             | null
@@ -728,6 +731,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sucursales: {
+        Row: {
+          descripcion: string | null
+          direccion: string
+          id: number
+          nombre: string
+        }
+        Insert: {
+          descripcion?: string | null
+          direccion: string
+          id?: number
+          nombre: string
+        }
+        Update: {
+          descripcion?: string | null
+          direccion?: string
+          id?: number
+          nombre?: string
+        }
+        Relationships: []
       }
       system_notifications: {
         Row: {
