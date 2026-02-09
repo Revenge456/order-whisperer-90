@@ -27,7 +27,7 @@ import { filterBySearch } from "@/lib/search-utils";
 import { PaymentModal } from "@/components/modals/PaymentModal";
 import { PaymentStatusSelect } from "@/components/orders/PaymentStatusSelect";
 import { PaymentReceiptButton } from "@/components/orders/PaymentReceiptButton";
-import { N8nWebhookConfig } from "@/components/orders/N8nWebhookConfig";
+
 import type { Tables, Enums } from "@/integrations/supabase/types";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -125,7 +125,7 @@ export default function Orders() {
             <h1 className="text-3xl font-bold text-foreground">Pedidos</h1>
             <p className="text-muted-foreground mt-1">Gestión de pedidos y pagos</p>
           </div>
-          <N8nWebhookConfig />
+          
         </div>
 
         {/* Stats Cards */}

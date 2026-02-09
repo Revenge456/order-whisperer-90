@@ -10,8 +10,9 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2 } from 'lucide-react';
 import { useUpdatePayment } from '@/hooks/useOrders';
 import { useN8nWebhook, PAYMENT_EVENTS } from '@/hooks/useN8nWebhook';
-import { useN8nPaymentWebhookUrl } from '@/hooks/useSystemSettings';
 import type { Enums } from '@/integrations/supabase/types';
+
+const N8N_PAYMENT_WEBHOOK_URL = 'https://n8n.groupquimera.com/webhook/1eec3f11-5e72-41d2-8d27-516a55ba1b07';
 
 type PaymentStatus = Enums<'payment_status'>;
 
@@ -45,7 +46,6 @@ export function PaymentStatusSelect({
 }: PaymentStatusSelectProps) {
   const updatePayment = useUpdatePayment();
   const { triggerWebhook } = useN8nWebhook();
-  const webhookUrl = useN8nPaymentWebhookUrl();
   const [isUpdating, setIsUpdating] = useState(false);
 
   const handleStatusChange = async (newStatus: PaymentStatus) => {
@@ -66,8 +66,8 @@ export function PaymentStatusSelect({
       await updatePayment.mutateAsync(updateData as any);
 
       // Trigger n8n webhook for payment confirmation
-      if (newStatus === 'confirmado' && webhookUrl) {
-        await triggerWebhook(webhookUrl, PAYMENT_EVENTS.CONFIRMED, {
+      if (newStatus === 'confirmado' && N8N_PAYMENT_WEBHOOK_URL) {
+        await triggerWebhook(N8N_PAYMENT_WEBHOOK_URL, PAYMENT_EVENTS.CONFIRMED, {
           payment_id: paymentId,
           order_id: orderId,
           order_number: orderNumber,
