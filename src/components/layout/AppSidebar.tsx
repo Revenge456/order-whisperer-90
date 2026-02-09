@@ -6,7 +6,8 @@ import {
   Package, 
   BarChart3, 
   UsersRound,
-  Dumbbell
+  Dumbbell,
+  MessageSquare
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
@@ -34,6 +35,7 @@ const mainNavItems = [
 ];
 
 const secondaryNavItems = [
+  { title: "Chats", url: "/chats", icon: MessageSquare, pageKey: "chats" },
   { title: "Reportes", url: "/reports", icon: BarChart3, pageKey: "reports" },
   { title: "Equipo", url: "/team", icon: UsersRound, pageKey: "team" },
 ];
