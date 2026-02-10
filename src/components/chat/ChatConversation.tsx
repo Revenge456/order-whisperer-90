@@ -3,14 +3,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Bot, User, MessageSquare, Phone, Send } from "lucide-react";
+import { Bot, User, MessageSquare, Phone } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import type { ChatMessage } from "@/hooks/useChatHistory";
-import { useSendMessage, useToggleConversationMode } from "@/hooks/useChatHistory";
+import { useToggleConversationMode } from "@/hooks/useChatHistory";
 
 interface ChatConversationProps {
   messages: ChatMessage[];
@@ -30,26 +28,12 @@ export function ChatConversation({
   conversationMode,
 }: ChatConversationProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
-  const [input, setInput] = useState("");
-  const sendMessage = useSendMessage();
+  
   const toggleMode = useToggleConversationMode();
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
-
-  const handleSend = () => {
-    if (!input.trim() || !customerId) return;
-    sendMessage.mutate({ customerId, content: input.trim() });
-    setInput("");
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
 
   if (!customerName) {
     return (
@@ -171,29 +155,6 @@ export function ChatConversation({
         )}
       </ScrollArea>
 
-      {/* Message input */}
-      <div className="px-4 py-3 border-t border-border bg-card/50">
-        <div className="flex items-end gap-2">
-          <Textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Escribe un mensaje..."
-            className="min-h-[40px] max-h-[120px] resize-none"
-            rows={1}
-          />
-          <Button
-            size="icon"
-            onClick={handleSend}
-            disabled={!input.trim() || sendMessage.isPending}
-          >
-            <Send className="w-4 h-4" />
-          </Button>
-        </div>
-        <p className="text-[10px] text-muted-foreground mt-1">
-          Este mensaje se guarda como registro interno. {isManual ? '⚠️ Modo Manual activo' : '🤖 AI Agent activo'}
-        </p>
-      </div>
     </div>
   );
 }
