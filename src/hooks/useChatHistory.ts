@@ -1,6 +1,7 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useMemo } from 'react';
+import { toast } from 'sonner';
 
 export interface ChatMessage {
   id: string;
@@ -117,5 +118,45 @@ export function useChatMessages(customerId: string | null) {
       return data as ChatMessage[];
     },
     enabled: !!customerId,
+  });
+}
+
+export function useSendMessage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ customerId, content }: { customerId: string; content: string }) => {
+      const { error } = await supabase.from('whatsapp_logs').insert({
+        customer_id: customerId,
+        content,
+        message_type: 'outgoing',
+        is_automated: false,
+        ai_agent_phase: 'manual',
+      });
+      if (error) throw error;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['chat-messages', variables.customerId] });
+      queryClient.invalidateQueries({ queryKey: ['chat-list'] });
+    },
+    onError: (err: Error) => toast.error('Error al enviar: ' + err.message),
+  });
+}
+
+export function useToggleConversationMode() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ customerId, mode }: { customerId: string; mode: 'ai' | 'manual' }) => {
+      const { error } = await supabase
+        .from('customers')
+        .update({ conversation_mode: mode })
+        .eq('id', customerId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['chat-list'] });
+      queryClient.invalidateQueries({ queryKey: ['chat-customers'] });
+      toast.success('Modo actualizado');
+    },
+    onError: (err: Error) => toast.error('Error: ' + err.message),
   });
 }

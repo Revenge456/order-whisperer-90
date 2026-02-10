@@ -1,18 +1,24 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Bot, User, MessageSquare, Phone } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Bot, User, MessageSquare, Phone, Send } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import type { ChatMessage } from "@/hooks/useChatHistory";
+import { useSendMessage, useToggleConversationMode } from "@/hooks/useChatHistory";
 
 interface ChatConversationProps {
   messages: ChatMessage[];
   isLoading: boolean;
   customerName: string;
   customerPhone: string;
+  customerId: string | null;
+  conversationMode: 'ai' | 'manual';
 }
 
 export function ChatConversation({
@@ -20,12 +26,30 @@ export function ChatConversation({
   isLoading,
   customerName,
   customerPhone,
+  customerId,
+  conversationMode,
 }: ChatConversationProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
+  const [input, setInput] = useState("");
+  const sendMessage = useSendMessage();
+  const toggleMode = useToggleConversationMode();
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  const handleSend = () => {
+    if (!input.trim() || !customerId) return;
+    sendMessage.mutate({ customerId, content: input.trim() });
+    setInput("");
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
 
   if (!customerName) {
     return (
@@ -37,9 +61,11 @@ export function ChatConversation({
     );
   }
 
+  const isManual = conversationMode === 'manual';
+
   return (
     <div className="flex-1 flex flex-col h-full">
-      {/* Conversation header */}
+      {/* Header */}
       <div className="px-5 py-3 border-b border-border flex items-center gap-3 bg-card/50">
         <Avatar className="h-9 w-9">
           <AvatarFallback className="bg-primary/20 text-primary text-xs font-semibold">
@@ -52,6 +78,24 @@ export function ChatConversation({
             <Phone className="w-3 h-3" /> {customerPhone}
           </p>
         </div>
+
+        {/* AI/Manual toggle */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">{isManual ? 'Manual' : 'AI Agent'}</span>
+          <Switch
+            checked={isManual}
+            onCheckedChange={(checked) => {
+              if (customerId) {
+                toggleMode.mutate({ customerId, mode: checked ? 'manual' : 'ai' });
+              }
+            }}
+          />
+          <Badge variant={isManual ? "secondary" : "default"} className="text-[10px]">
+            {isManual ? <User className="w-3 h-3 mr-1" /> : <Bot className="w-3 h-3 mr-1" />}
+            {isManual ? 'Manual' : 'AI'}
+          </Badge>
+        </div>
+
         <Badge variant="secondary" className="text-xs">
           {messages.length} mensajes
         </Badge>
@@ -105,7 +149,7 @@ export function ChatConversation({
                           <User className="w-3 h-3 text-muted-foreground" />
                         )}
                         <span className="text-[10px] font-medium text-muted-foreground">
-                          {isOutgoing ? 'AI Agent' : customerName}
+                          {isOutgoing ? (msg.is_automated ? 'AI Agent' : 'Operador') : customerName}
                         </span>
                         {msg.ai_agent_phase && (
                           <Badge variant="outline" className="text-[9px] px-1 py-0 border-primary/20 text-primary">
@@ -126,6 +170,30 @@ export function ChatConversation({
           </div>
         )}
       </ScrollArea>
+
+      {/* Message input */}
+      <div className="px-4 py-3 border-t border-border bg-card/50">
+        <div className="flex items-end gap-2">
+          <Textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Escribe un mensaje..."
+            className="min-h-[40px] max-h-[120px] resize-none"
+            rows={1}
+          />
+          <Button
+            size="icon"
+            onClick={handleSend}
+            disabled={!input.trim() || sendMessage.isPending}
+          >
+            <Send className="w-4 h-4" />
+          </Button>
+        </div>
+        <p className="text-[10px] text-muted-foreground mt-1">
+          Este mensaje se guarda como registro interno. {isManual ? '⚠️ Modo Manual activo' : '🤖 AI Agent activo'}
+        </p>
+      </div>
     </div>
   );
 }
