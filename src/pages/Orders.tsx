@@ -239,6 +239,8 @@ export default function Orders() {
                         <TableHead>Estado Pedido</TableHead>
                         <TableHead>Estado Pago</TableHead>
                         <TableHead className="text-right">Total</TableHead>
+                        <TableHead>Ubicación</TableHead>
+                        <TableHead>Nota</TableHead>
                         <TableHead className="text-right">Fecha</TableHead>
                         <TableHead className="w-[100px]">Acciones</TableHead>
                       </TableRow>
@@ -246,7 +248,7 @@ export default function Orders() {
                     <TableBody>
                       {filteredOrders.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                          <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                             No hay pedidos que coincidan
                           </TableCell>
                         </TableRow>
@@ -289,6 +291,12 @@ export default function Orders() {
                                 <span className="font-medium text-foreground">
                                   Bs. {(order.total || 0).toLocaleString()}
                                 </span>
+                              </TableCell>
+                              <TableCell>
+                                <span className="text-sm text-foreground">{order.delivery_address || '—'}</span>
+                              </TableCell>
+                              <TableCell>
+                                <span className="text-sm text-foreground max-w-[200px] truncate block">{order.order_notes || '—'}</span>
                               </TableCell>
                               <TableCell className="text-right">
                                 <span className="text-sm text-muted-foreground">
