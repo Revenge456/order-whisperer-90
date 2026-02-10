@@ -35,7 +35,7 @@ export default function Customers() {
   const filteredCustomers = filterBySearch(
     customers || [],
     searchTerm,
-    ['name', 'phone', 'address']
+    ['name', 'phone']
   );
 
   const handleRowClick = (customer: Customer) => {
