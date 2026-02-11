@@ -1,29 +1,41 @@
 import { useState } from "react";
-import { Plus, Search, MessageCircle, MoreHorizontal, Edit } from "lucide-react";
+import { Search, MessageCircle, Download } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { DynamicTable, RecordDetailSheet } from "@/components/dynamic-table";
-import { AIAgentConfig } from "@/components/settings/AIAgentConfig";
 import { useCustomers, useUpdateCustomer } from "@/hooks/useCustomers";
 import { useColumnDefinitions } from "@/hooks/useColumnDefinitions";
 import { useIsAdmin } from "@/hooks/useAuth";
 import { filterBySearch } from "@/lib/search-utils";
 import type { Tables } from "@/integrations/supabase/types";
 import { toast } from "sonner";
+import * as XLSX from "xlsx";
 
 type Customer = Tables<'customers'>;
 
+const canalOptions = [
+  { value: 'all', label: 'Todos los canales' },
+  { value: 'facebook_ads', label: 'Facebook Ads' },
+  { value: 'whatsapp', label: 'WhatsApp' },
+  { value: 'instagram', label: 'Instagram' },
+  { value: 'referido', label: 'Referido' },
+  { value: 'organico', label: 'Orgánico' },
+  { value: 'otro', label: 'Otro' },
+];
+
 export default function Customers() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [canalFilter, setCanalFilter] = useState("all");
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   
@@ -33,7 +45,7 @@ export default function Customers() {
   const isAdmin = useIsAdmin();
 
   const filteredCustomers = filterBySearch(
-    customers || [],
+    (customers || []).filter(c => canalFilter === 'all' || c.canal === canalFilter),
     searchTerm,
     ['name', 'phone']
   );
@@ -50,15 +62,45 @@ export default function Customers() {
 
   const handleSave = async (updates: Partial<Customer>) => {
     if (!selectedCustomer) return;
+    const validFields = ['name', 'phone', 'email', 'address', 'notes', 'is_active', 'canal', 'custom_fields', 'conversation_mode', 'Anuncio'];
+    const filtered: Record<string, unknown> = {};
+    for (const key of validFields) {
+      if (key in updates) filtered[key] = (updates as Record<string, unknown>)[key];
+    }
     try {
-      await updateCustomer.mutateAsync({ id: selectedCustomer.id, ...updates });
+      await updateCustomer.mutateAsync({ id: selectedCustomer.id, ...filtered });
       toast.success('Cliente actualizado');
     } catch (error) {
       // Error handled by mutation
     }
   };
 
-  const totalSpent = customers?.reduce((sum, c) => sum + (c.total_spent || 0), 0) || 0;
+  const handleExportExcel = () => {
+    if (!customers || customers.length === 0) {
+      toast.error('No hay clientes para exportar');
+      return;
+    }
+
+    const exportData = customers.map(c => ({
+      'Nombre': c.name || '',
+      'Teléfono': c.phone || '',
+      'Email': c.email || '',
+      'Dirección': c.address || '',
+      'Canal': canalOptions.find(o => o.value === c.canal)?.label || c.canal || '',
+      'Activo': c.is_active ? 'Sí' : 'No',
+      'Total Pedidos': c.total_orders || 0,
+      'Total Gastado (Bs)': c.total_spent || 0,
+      'Notas': c.notes || '',
+      'Creado': c.created_at ? new Date(c.created_at).toLocaleDateString('es-BO') : '',
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Clientes');
+    XLSX.writeFile(wb, `clientes_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    toast.success('Archivo exportado exitosamente');
+  };
+
   const activeCustomers = customers?.filter(c => c.is_active).length || 0;
 
   return (
@@ -68,27 +110,18 @@ export default function Customers() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-foreground">Clientes</h1>
-            <p className="text-muted-foreground mt-1">Gestiona tu base de clientes con tablas dinámicas</p>
+            <p className="text-muted-foreground mt-1">Gestiona tu base de clientes</p>
           </div>
+          {isAdmin && (
+            <Button onClick={handleExportExcel} variant="outline" className="gap-2">
+              <Download className="w-4 h-4" />
+              Exportar a Excel
+            </Button>
+          )}
         </div>
 
-        {/* Search */}
-        <Card className="glass border-border/50">
-          <CardContent className="pt-6">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por nombre, teléfono o dirección..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 bg-secondary/50 border-border/50"
-              />
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Card className="glass border-border/50">
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">Total Clientes</p>
@@ -105,18 +138,34 @@ export default function Customers() {
               </p>
             </CardContent>
           </Card>
-          <Card className="glass border-border/50">
-            <CardContent className="pt-6">
-              <p className="text-sm text-muted-foreground">Ventas Totales</p>
-              <p className="text-2xl font-bold text-foreground">
-                {isLoading ? <Skeleton className="h-8 w-24" /> : `Bs. ${totalSpent.toLocaleString()}`}
-              </p>
-            </CardContent>
-          </Card>
         </div>
 
-        {/* AI Agent Config (Admin only) */}
-        {isAdmin && <AIAgentConfig />}
+        {/* Search + Canal Filter */}
+        <Card className="glass border-border/50">
+          <CardContent className="pt-6">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por nombre o teléfono..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 bg-secondary/50 border-border/50"
+                />
+              </div>
+              <Select value={canalFilter} onValueChange={setCanalFilter}>
+                <SelectTrigger className="w-full sm:w-48 bg-secondary/50 border-border/50">
+                  <SelectValue placeholder="Filtrar por canal" />
+                </SelectTrigger>
+                <SelectContent>
+                  {canalOptions.map(opt => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Dynamic Table */}
         <Card className="glass border-border/50">

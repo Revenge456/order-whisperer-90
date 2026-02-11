@@ -3,11 +3,12 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { ChatList } from "@/components/chat/ChatList";
 import { ChatConversation } from "@/components/chat/ChatConversation";
 import { useChatList, useChatMessages } from "@/hooks/useChatHistory";
+import type { ChatFilter } from "@/hooks/useChatHistory";
 
 export default function ChatHistory() {
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [filterStatus, setFilterStatus] = useState<'all' | 'ai' | 'manual'>('all');
+  const [filterStatus, setFilterStatus] = useState<ChatFilter>('all');
 
   const { data: chatList, isLoading: listLoading } = useChatList(search, filterStatus);
   const { data: messages = [], isLoading: messagesLoading } = useChatMessages(selectedCustomerId);
@@ -39,6 +40,7 @@ export default function ChatHistory() {
           customerPhone={selectedChat?.customer_phone ?? ""}
           customerId={selectedCustomerId}
           conversationMode={selectedChat?.is_automated ? 'ai' : 'manual'}
+          chatStatus={selectedChat?.chat_status ?? 'abierto'}
         />
       </div>
     </DashboardLayout>

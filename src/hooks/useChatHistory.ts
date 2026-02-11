@@ -7,7 +7,7 @@ export interface ChatMessage {
   id: string;
   customer_id: string;
   content: string;
-  message_type: string; // 'incoming' | 'outgoing'
+  message_type: string;
   is_automated: boolean;
   ai_agent_phase: string | null;
   created_at: string;
@@ -21,9 +21,12 @@ export interface ChatSummary {
   last_message_at: string;
   message_count: number;
   is_automated: boolean;
+  chat_status: string; // 'abierto' | 'cerrado'
 }
 
-export function useChatList(search: string, filterStatus: 'all' | 'ai' | 'manual') {
+export type ChatFilter = 'all' | 'ai' | 'manual' | 'cerrados';
+
+export function useChatList(search: string, filterStatus: ChatFilter) {
   const { data: logs, isLoading: logsLoading, error: logsError } = useQuery({
     queryKey: ['chat-list'],
     queryFn: async () => {
@@ -42,7 +45,7 @@ export function useChatList(search: string, filterStatus: 'all' | 'ai' | 'manual
     queryFn: async () => {
       const { data, error } = await supabase
         .from('customers')
-        .select('id, name, phone, conversation_mode');
+        .select('id, name, phone, conversation_mode, chat_status');
       if (error) throw error;
       return data;
     },
@@ -66,7 +69,7 @@ export function useChatList(search: string, filterStatus: 'all' | 'ai' | 'manual
       const customer = customerMap.get(customerId);
       if (!customer) continue;
 
-      const lastMsg = messages[0]; // already sorted desc
+      const lastMsg = messages[0];
       summaries.push({
         customer_id: customerId,
         customer_name: customer.name || 'Sin nombre',
@@ -75,6 +78,7 @@ export function useChatList(search: string, filterStatus: 'all' | 'ai' | 'manual
         last_message_at: lastMsg.created_at,
         message_count: messages.length,
         is_automated: customer.conversation_mode === 'ai',
+        chat_status: (customer as any).chat_status || 'abierto',
       });
     }
 
@@ -89,9 +93,14 @@ export function useChatList(search: string, filterStatus: 'all' | 'ai' | 'manual
     }
 
     if (filterStatus === 'ai') {
-      filtered = filtered.filter(c => c.is_automated);
+      filtered = filtered.filter(c => c.is_automated && c.chat_status !== 'cerrado');
     } else if (filterStatus === 'manual') {
-      filtered = filtered.filter(c => !c.is_automated);
+      filtered = filtered.filter(c => !c.is_automated && c.chat_status !== 'cerrado');
+    } else if (filterStatus === 'cerrados') {
+      filtered = filtered.filter(c => c.chat_status === 'cerrado');
+    } else {
+      // 'all' = only open chats
+      filtered = filtered.filter(c => c.chat_status !== 'cerrado');
     }
 
     return filtered.sort((a, b) => new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime());
@@ -156,6 +165,25 @@ export function useToggleConversationMode() {
       queryClient.invalidateQueries({ queryKey: ['chat-list'] });
       queryClient.invalidateQueries({ queryKey: ['chat-customers'] });
       toast.success('Modo actualizado');
+    },
+    onError: (err: Error) => toast.error('Error: ' + err.message),
+  });
+}
+
+export function useToggleChatStatus() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ customerId, status }: { customerId: string; status: 'abierto' | 'cerrado' }) => {
+      const { error } = await supabase
+        .from('customers')
+        .update({ chat_status: status })
+        .eq('id', customerId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['chat-list'] });
+      queryClient.invalidateQueries({ queryKey: ['chat-customers'] });
+      toast.success('Estado del chat actualizado');
     },
     onError: (err: Error) => toast.error('Error: ' + err.message),
   });
