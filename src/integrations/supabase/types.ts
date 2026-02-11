@@ -119,6 +119,8 @@ export type Database = {
         Row: {
           address: string | null
           Anuncio: string | null
+          canal: string | null
+          chat_status: string
           conversation_mode:
             | Database["public"]["Enums"]["conversation_mode"]
             | null
@@ -139,6 +141,8 @@ export type Database = {
         Insert: {
           address?: string | null
           Anuncio?: string | null
+          canal?: string | null
+          chat_status?: string
           conversation_mode?:
             | Database["public"]["Enums"]["conversation_mode"]
             | null
@@ -159,6 +163,8 @@ export type Database = {
         Update: {
           address?: string | null
           Anuncio?: string | null
+          canal?: string | null
+          chat_status?: string
           conversation_mode?:
             | Database["public"]["Enums"]["conversation_mode"]
             | null

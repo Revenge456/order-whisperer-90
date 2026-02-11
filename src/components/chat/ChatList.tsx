@@ -3,17 +3,11 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Search, Bot, User, MessageSquare } from "lucide-react";
+import { Search, Bot, User, MessageSquare, Lock } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
-import type { ChatSummary } from "@/hooks/useChatHistory";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import type { ChatSummary, ChatFilter } from "@/hooks/useChatHistory";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface ChatListProps {
   chats: ChatSummary[];
@@ -22,8 +16,8 @@ interface ChatListProps {
   onSelect: (customerId: string) => void;
   search: string;
   onSearchChange: (value: string) => void;
-  filterStatus: 'all' | 'ai' | 'manual';
-  onFilterChange: (value: 'all' | 'ai' | 'manual') => void;
+  filterStatus: ChatFilter;
+  onFilterChange: (value: ChatFilter) => void;
 }
 
 export function ChatList({
@@ -56,16 +50,18 @@ export function ChatList({
             className="pl-9 bg-muted/50"
           />
         </div>
-        <Select value={filterStatus} onValueChange={(v) => onFilterChange(v as 'all' | 'ai' | 'manual')}>
-          <SelectTrigger className="bg-muted/50">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos los chats</SelectItem>
-            <SelectItem value="ai">Solo AI Agent</SelectItem>
-            <SelectItem value="manual">Solo Manual</SelectItem>
-          </SelectContent>
-        </Select>
+        {/* Filter tabs */}
+        <Tabs value={filterStatus} onValueChange={(v) => onFilterChange(v as ChatFilter)} className="w-full">
+          <TabsList className="w-full grid grid-cols-4 h-8">
+            <TabsTrigger value="all" className="text-[10px] px-1">Todos</TabsTrigger>
+            <TabsTrigger value="ai" className="text-[10px] px-1">AI</TabsTrigger>
+            <TabsTrigger value="manual" className="text-[10px] px-1">Manual</TabsTrigger>
+            <TabsTrigger value="cerrados" className="text-[10px] px-1">
+              <Lock className="w-3 h-3 mr-0.5" />
+              Cerrados
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
 
       {/* Chat list */}
@@ -91,6 +87,7 @@ export function ChatList({
           <div className="divide-y divide-border">
             {chats.map((chat) => {
               const isSelected = selectedId === chat.customer_id;
+              const isClosed = chat.chat_status === 'cerrado';
               const initials = chat.customer_name
                 .split(' ')
                 .map(w => w[0])
@@ -104,10 +101,10 @@ export function ChatList({
                   onClick={() => onSelect(chat.customer_id)}
                   className={`w-full flex items-center gap-3 p-3 text-left transition-colors hover:bg-muted/50 ${
                     isSelected ? 'bg-primary/10 border-l-2 border-l-primary' : ''
-                  }`}
+                  } ${isClosed ? 'opacity-60' : ''}`}
                 >
                   <Avatar className="h-10 w-10 shrink-0">
-                    <AvatarFallback className="bg-primary/20 text-primary text-xs font-semibold">
+                    <AvatarFallback className={`text-xs font-semibold ${isClosed ? 'bg-muted text-muted-foreground' : 'bg-primary/20 text-primary'}`}>
                       {initials}
                     </AvatarFallback>
                   </Avatar>
@@ -127,7 +124,11 @@ export function ChatList({
                       {chat.last_message}
                     </p>
                     <div className="flex items-center gap-2 mt-1">
-                      {chat.is_automated ? (
+                      {isClosed ? (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1">
+                          <Lock className="w-3 h-3" /> Cerrado
+                        </Badge>
+                      ) : chat.is_automated ? (
                         <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1 border-primary/30 text-primary">
                           <Bot className="w-3 h-3" /> AI
                         </Badge>

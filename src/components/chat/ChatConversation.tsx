@@ -1,14 +1,15 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Bot, User, MessageSquare, Phone } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Bot, User, MessageSquare, Phone, Lock } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import type { ChatMessage } from "@/hooks/useChatHistory";
-import { useToggleConversationMode } from "@/hooks/useChatHistory";
+import { useToggleConversationMode, useToggleChatStatus } from "@/hooks/useChatHistory";
 
 interface ChatConversationProps {
   messages: ChatMessage[];
@@ -17,6 +18,7 @@ interface ChatConversationProps {
   customerPhone: string;
   customerId: string | null;
   conversationMode: 'ai' | 'manual';
+  chatStatus: string;
 }
 
 export function ChatConversation({
@@ -26,10 +28,12 @@ export function ChatConversation({
   customerPhone,
   customerId,
   conversationMode,
+  chatStatus,
 }: ChatConversationProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   
   const toggleMode = useToggleConversationMode();
+  const toggleChatStatus = useToggleChatStatus();
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -46,6 +50,7 @@ export function ChatConversation({
   }
 
   const isManual = conversationMode === 'manual';
+  const isClosed = chatStatus === 'cerrado';
 
   return (
     <div className="flex-1 flex flex-col h-full">
@@ -61,6 +66,26 @@ export function ChatConversation({
           <p className="text-xs text-muted-foreground flex items-center gap-1">
             <Phone className="w-3 h-3" /> {customerPhone}
           </p>
+        </div>
+
+        {/* Closed checkbox */}
+        <div className="flex items-center gap-1.5">
+          <Checkbox
+            id="chat-closed"
+            checked={isClosed}
+            onCheckedChange={(checked) => {
+              if (customerId) {
+                toggleChatStatus.mutate({
+                  customerId,
+                  status: checked ? 'cerrado' : 'abierto',
+                });
+              }
+            }}
+          />
+          <label htmlFor="chat-closed" className="text-xs text-muted-foreground cursor-pointer flex items-center gap-1">
+            <Lock className="w-3 h-3" />
+            Cerrado
+          </label>
         </div>
 
         {/* AI/Manual toggle */}
@@ -154,7 +179,6 @@ export function ChatConversation({
           </div>
         )}
       </ScrollArea>
-
     </div>
   );
 }
