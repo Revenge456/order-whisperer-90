@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useProducts, useProductCategories, useLowStockProducts, useUpdateProduct } from "@/hooks/useProducts";
+import { useProducts, useProductCategories, useLowStockProducts, useUpdateProduct, useDeleteProduct } from "@/hooks/useProducts";
 import { filterBySearch } from "@/lib/search-utils";
 import { ProductModal } from "@/components/modals/ProductModal";
 import { DynamicTable, RecordDetailSheet } from "@/components/dynamic-table";
@@ -36,6 +36,7 @@ export default function Products() {
   const { data: lowStockProducts } = useLowStockProducts();
   const { data: columns, isLoading: columnsLoading } = useColumnDefinitions('products');
   const updateProduct = useUpdateProduct();
+  const deleteProduct = useDeleteProduct();
   const isAdmin = useIsAdmin();
 
   const filteredProducts = filterBySearch(
@@ -64,6 +65,15 @@ export default function Products() {
       toast.success('Producto actualizado');
     } catch (error) {
       toast.error('Error al actualizar producto');
+    }
+  };
+
+  const handleDelete = async (record: Record<string, unknown>) => {
+    try {
+      await deleteProduct.mutateAsync(record.id as string);
+      setIsDetailOpen(false);
+    } catch (error) {
+      // Error handled by hook
     }
   };
 
@@ -202,7 +212,8 @@ export default function Products() {
         title={selectedRecord?.name || 'Detalle de Producto'}
         onSave={handleSave}
         canEdit={isAdmin}
-        canDelete={false}
+        canDelete={isAdmin}
+        onDelete={handleDelete}
       />
     </DashboardLayout>
   );
