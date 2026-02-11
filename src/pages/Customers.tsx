@@ -19,7 +19,7 @@ import { useIsAdmin } from "@/hooks/useAuth";
 import { filterBySearch } from "@/lib/search-utils";
 import type { Tables } from "@/integrations/supabase/types";
 import { toast } from "sonner";
-import * as XLSX from "xlsx";
+
 
 type Customer = Tables<'customers'>;
 
@@ -81,23 +81,31 @@ export default function Customers() {
       return;
     }
 
-    const exportData = customers.map(c => ({
-      'Nombre': c.name || '',
-      'Teléfono': c.phone || '',
-      'Email': c.email || '',
-      'Dirección': c.address || '',
-      'Canal': canalOptions.find(o => o.value === c.canal)?.label || c.canal || '',
-      'Activo': c.is_active ? 'Sí' : 'No',
-      'Total Pedidos': c.total_orders || 0,
-      'Total Gastado (Bs)': c.total_spent || 0,
-      'Notas': c.notes || '',
-      'Creado': c.created_at ? new Date(c.created_at).toLocaleDateString('es-BO') : '',
-    }));
+    const headers = ['Nombre', 'Teléfono', 'Email', 'Dirección', 'Canal', 'Activo', 'Total Pedidos', 'Total Gastado (Bs)', 'Notas', 'Creado'];
+    const rows = customers.map(c => [
+      c.name || '',
+      c.phone || '',
+      c.email || '',
+      c.address || '',
+      canalOptions.find(o => o.value === c.canal)?.label || c.canal || '',
+      c.is_active ? 'Sí' : 'No',
+      c.total_orders || 0,
+      c.total_spent || 0,
+      c.notes || '',
+      c.created_at ? new Date(c.created_at).toLocaleDateString('es-BO') : '',
+    ]);
 
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Clientes');
-    XLSX.writeFile(wb, `clientes_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    const csvContent = [headers, ...rows]
+      .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `clientes_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
     toast.success('Archivo exportado exitosamente');
   };
 
