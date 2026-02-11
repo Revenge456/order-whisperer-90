@@ -140,7 +140,7 @@ export function RecordDetailSheet<T extends Record<string, unknown>>({
 
     switch (column.column_type) {
       case 'text':
-        if (column.column_key === 'address' || column.column_key === 'notes') {
+        if (column.column_key === 'address' || column.column_key === 'notes' || column.column_key === 'description') {
           return (
             <Textarea
               value={String(value || '')}
