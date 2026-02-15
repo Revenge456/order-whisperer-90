@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Search, Bot, User, MessageSquare, Lock } from "lucide-react";
+import { Search, Bot, MessageSquare, CheckCircle, ShoppingCart, Eye } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import type { ChatSummary, ChatFilter } from "@/hooks/useChatHistory";
@@ -85,7 +85,6 @@ export function ChatList({
           <div className="divide-y divide-border">
             {chats.map((chat) => {
               const isSelected = selectedId === chat.customer_id;
-              const isClosed = chat.chat_status === 'cerrado';
               const initials = chat.customer_name
                 .split(' ')
                 .map(w => w[0])
@@ -99,10 +98,10 @@ export function ChatList({
                   onClick={() => onSelect(chat.customer_id)}
                   className={`w-full flex items-center gap-3 p-3 text-left transition-colors hover:bg-muted/50 ${
                     isSelected ? 'bg-primary/10 border-l-2 border-l-primary' : ''
-                  } ${isClosed ? 'opacity-60' : ''}`}
+                  }`}
                 >
                   <Avatar className="h-10 w-10 shrink-0">
-                    <AvatarFallback className={`text-xs font-semibold ${isClosed ? 'bg-muted text-muted-foreground' : 'bg-primary/20 text-primary'}`}>
+                    <AvatarFallback className="text-xs font-semibold bg-primary/20 text-primary">
                       {initials}
                     </AvatarFallback>
                   </Avatar>
@@ -122,17 +121,25 @@ export function ChatList({
                       {chat.last_message}
                     </p>
                     <div className="flex items-center gap-2 mt-1">
-                      {isClosed ? (
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1">
-                          <Lock className="w-3 h-3" /> Cerrado
-                        </Badge>
-                      ) : chat.is_automated ? (
+                      {chat.chat_status === 'ai' ? (
                         <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1 border-primary/30 text-primary">
                           <Bot className="w-3 h-3" /> AI
                         </Badge>
+                      ) : chat.chat_status === 'revision' ? (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1 border-amber-500/30 text-amber-500">
+                          <Eye className="w-3 h-3" /> Revisión
+                        </Badge>
+                      ) : chat.chat_status === 'bueno' ? (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1 border-green-500/30 text-green-500">
+                          <CheckCircle className="w-3 h-3" /> Bueno
+                        </Badge>
+                      ) : chat.chat_status === 'venta' ? (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1 border-blue-500/30 text-blue-500">
+                          <ShoppingCart className="w-3 h-3" /> Venta
+                        </Badge>
                       ) : (
                         <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1">
-                          <User className="w-3 h-3" /> Manual
+                          <Bot className="w-3 h-3" /> AI
                         </Badge>
                       )}
                       <span className="text-[10px] text-muted-foreground">
