@@ -20,8 +20,7 @@ export interface ChatSummary {
   last_message: string;
   last_message_at: string;
   message_count: number;
-  is_automated: boolean;
-  chat_status: string; // 'abierto' | 'cerrado'
+  chat_status: string; // 'ai' | 'revision' | 'bueno' | 'venta'
 }
 
 export type ChatFilter = 'all' | 'ai' | 'revision' | 'buenos' | 'ventas';
@@ -77,8 +76,7 @@ export function useChatList(search: string, filterStatus: ChatFilter) {
         last_message: lastMsg.content,
         last_message_at: lastMsg.created_at,
         message_count: messages.length,
-        is_automated: customer.conversation_mode === 'ai',
-        chat_status: (customer as any).chat_status || 'abierto',
+        chat_status: (customer as any).chat_status || 'ai',
       });
     }
 
@@ -93,17 +91,15 @@ export function useChatList(search: string, filterStatus: ChatFilter) {
     }
 
     if (filterStatus === 'ai') {
-      filtered = filtered.filter(c => c.is_automated && c.chat_status !== 'cerrado');
+      filtered = filtered.filter(c => c.chat_status === 'ai');
     } else if (filterStatus === 'revision') {
-      filtered = filtered.filter(c => !c.is_automated && c.chat_status !== 'cerrado');
+      filtered = filtered.filter(c => c.chat_status === 'revision');
     } else if (filterStatus === 'buenos') {
-      filtered = filtered.filter(c => c.chat_status === 'cerrado');
+      filtered = filtered.filter(c => c.chat_status === 'bueno');
     } else if (filterStatus === 'ventas') {
       filtered = filtered.filter(c => c.chat_status === 'venta');
-    } else {
-      // 'all' = only open chats
-      filtered = filtered.filter(c => c.chat_status !== 'cerrado' && c.chat_status !== 'venta');
     }
+    // 'all' shows everything
 
     return filtered.sort((a, b) => new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime());
   }, [logs, customers, search, filterStatus]);
@@ -153,39 +149,21 @@ export function useSendMessage() {
   });
 }
 
-export function useToggleConversationMode() {
+export function useSetChatClassification() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ customerId, mode }: { customerId: string; mode: 'ai' | 'manual' }) => {
+    mutationFn: async ({ customerId, status }: { customerId: string; status: string }) => {
+      const conversationMode = status === 'ai' ? 'ai' : 'manual';
       const { error } = await supabase
         .from('customers')
-        .update({ conversation_mode: mode })
+        .update({ chat_status: status, conversation_mode: conversationMode })
         .eq('id', customerId);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chat-list'] });
       queryClient.invalidateQueries({ queryKey: ['chat-customers'] });
-      toast.success('Modo actualizado');
-    },
-    onError: (err: Error) => toast.error('Error: ' + err.message),
-  });
-}
-
-export function useToggleChatStatus() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ customerId, status }: { customerId: string; status: 'abierto' | 'cerrado' }) => {
-      const { error } = await supabase
-        .from('customers')
-        .update({ chat_status: status })
-        .eq('id', customerId);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['chat-list'] });
-      queryClient.invalidateQueries({ queryKey: ['chat-customers'] });
-      toast.success('Estado del chat actualizado');
+      toast.success('Clasificación actualizada');
     },
     onError: (err: Error) => toast.error('Error: ' + err.message),
   });

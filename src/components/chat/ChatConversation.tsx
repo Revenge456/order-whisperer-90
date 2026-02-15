@@ -3,13 +3,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Bot, User, MessageSquare, Phone, Lock } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Bot, User, MessageSquare, Phone, CheckCircle, ShoppingCart, Eye } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import type { ChatMessage } from "@/hooks/useChatHistory";
-import { useToggleConversationMode, useToggleChatStatus } from "@/hooks/useChatHistory";
+import { useSetChatClassification } from "@/hooks/useChatHistory";
 
 interface ChatConversationProps {
   messages: ChatMessage[];
@@ -17,9 +16,15 @@ interface ChatConversationProps {
   customerName: string;
   customerPhone: string;
   customerId: string | null;
-  conversationMode: 'ai' | 'manual';
   chatStatus: string;
 }
+
+const STATUS_OPTIONS = [
+  { value: 'ai', label: 'AI Agent', icon: Bot, color: 'text-primary' },
+  { value: 'revision', label: 'Revisión', icon: Eye, color: 'text-amber-500' },
+  { value: 'bueno', label: 'Bueno', icon: CheckCircle, color: 'text-green-500' },
+  { value: 'venta', label: 'Venta', icon: ShoppingCart, color: 'text-blue-500' },
+];
 
 export function ChatConversation({
   messages,
@@ -27,13 +32,10 @@ export function ChatConversation({
   customerName,
   customerPhone,
   customerId,
-  conversationMode,
   chatStatus,
 }: ChatConversationProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
-  
-  const toggleMode = useToggleConversationMode();
-  const toggleChatStatus = useToggleChatStatus();
+  const setClassification = useSetChatClassification();
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -49,8 +51,7 @@ export function ChatConversation({
     );
   }
 
-  const isManual = conversationMode === 'manual';
-  const isClosed = chatStatus === 'cerrado';
+  const currentStatus = STATUS_OPTIONS.find(s => s.value === chatStatus) || STATUS_OPTIONS[0];
 
   return (
     <div className="flex-1 flex flex-col h-full">
@@ -68,42 +69,34 @@ export function ChatConversation({
           </p>
         </div>
 
-        {/* Closed checkbox */}
-        <div className="flex items-center gap-1.5">
-          <Checkbox
-            id="chat-closed"
-            checked={isClosed}
-            onCheckedChange={(checked) => {
-              if (customerId) {
-                toggleChatStatus.mutate({
-                  customerId,
-                  status: checked ? 'cerrado' : 'abierto',
-                });
-              }
-            }}
-          />
-          <label htmlFor="chat-closed" className="text-xs text-muted-foreground cursor-pointer flex items-center gap-1">
-            <Lock className="w-3 h-3" />
-            Cerrado
-          </label>
-        </div>
-
-        {/* AI/Manual toggle */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">{isManual ? 'Manual' : 'AI Agent'}</span>
-          <Switch
-            checked={isManual}
-            onCheckedChange={(checked) => {
-              if (customerId) {
-                toggleMode.mutate({ customerId, mode: checked ? 'manual' : 'ai' });
-              }
-            }}
-          />
-          <Badge variant={isManual ? "secondary" : "default"} className="text-[10px]">
-            {isManual ? <User className="w-3 h-3 mr-1" /> : <Bot className="w-3 h-3 mr-1" />}
-            {isManual ? 'Manual' : 'AI'}
-          </Badge>
-        </div>
+        {/* Classification Select */}
+        <Select
+          value={chatStatus}
+          onValueChange={(value) => {
+            if (customerId) {
+              setClassification.mutate({ customerId, status: value });
+            }
+          }}
+        >
+          <SelectTrigger className="w-[140px] h-8 text-xs">
+            <SelectValue>
+              <span className="flex items-center gap-1.5">
+                <currentStatus.icon className={`w-3.5 h-3.5 ${currentStatus.color}`} />
+                {currentStatus.label}
+              </span>
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {STATUS_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                <span className="flex items-center gap-2">
+                  <opt.icon className={`w-3.5 h-3.5 ${opt.color}`} />
+                  {opt.label}
+                </span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
         <Badge variant="secondary" className="text-xs">
           {messages.length} mensajes

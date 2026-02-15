@@ -39,8 +39,7 @@ export default function ChatHistory() {
           customerName={selectedChat?.customer_name ?? ""}
           customerPhone={selectedChat?.customer_phone ?? ""}
           customerId={selectedCustomerId}
-          conversationMode={selectedChat?.is_automated ? 'ai' : 'manual'}
-          chatStatus={selectedChat?.chat_status ?? 'abierto'}
+          chatStatus={selectedChat?.chat_status ?? 'ai'}
         />
       </div>
     </DashboardLayout>
