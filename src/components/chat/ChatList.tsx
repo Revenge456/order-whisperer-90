@@ -52,14 +52,12 @@ export function ChatList({
         </div>
         {/* Filter tabs */}
         <Tabs value={filterStatus} onValueChange={(v) => onFilterChange(v as ChatFilter)} className="w-full">
-          <TabsList className="w-full grid grid-cols-4 h-8">
+          <TabsList className="w-full grid grid-cols-5 h-8">
             <TabsTrigger value="all" className="text-[10px] px-1">Todos</TabsTrigger>
             <TabsTrigger value="ai" className="text-[10px] px-1">AI</TabsTrigger>
-            <TabsTrigger value="manual" className="text-[10px] px-1">Manual</TabsTrigger>
-            <TabsTrigger value="cerrados" className="text-[10px] px-1">
-              <Lock className="w-3 h-3 mr-0.5" />
-              Cerrados
-            </TabsTrigger>
+            <TabsTrigger value="revision" className="text-[10px] px-1">Revisión</TabsTrigger>
+            <TabsTrigger value="buenos" className="text-[10px] px-1">Buenos</TabsTrigger>
+            <TabsTrigger value="ventas" className="text-[10px] px-1">Ventas</TabsTrigger>
           </TabsList>
         </Tabs>
       </div>

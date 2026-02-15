@@ -24,7 +24,7 @@ export interface ChatSummary {
   chat_status: string; // 'abierto' | 'cerrado'
 }
 
-export type ChatFilter = 'all' | 'ai' | 'manual' | 'cerrados';
+export type ChatFilter = 'all' | 'ai' | 'revision' | 'buenos' | 'ventas';
 
 export function useChatList(search: string, filterStatus: ChatFilter) {
   const { data: logs, isLoading: logsLoading, error: logsError } = useQuery({
@@ -94,13 +94,15 @@ export function useChatList(search: string, filterStatus: ChatFilter) {
 
     if (filterStatus === 'ai') {
       filtered = filtered.filter(c => c.is_automated && c.chat_status !== 'cerrado');
-    } else if (filterStatus === 'manual') {
+    } else if (filterStatus === 'revision') {
       filtered = filtered.filter(c => !c.is_automated && c.chat_status !== 'cerrado');
-    } else if (filterStatus === 'cerrados') {
+    } else if (filterStatus === 'buenos') {
       filtered = filtered.filter(c => c.chat_status === 'cerrado');
+    } else if (filterStatus === 'ventas') {
+      filtered = filtered.filter(c => c.chat_status === 'venta');
     } else {
       // 'all' = only open chats
-      filtered = filtered.filter(c => c.chat_status !== 'cerrado');
+      filtered = filtered.filter(c => c.chat_status !== 'cerrado' && c.chat_status !== 'venta');
     }
 
     return filtered.sort((a, b) => new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime());
