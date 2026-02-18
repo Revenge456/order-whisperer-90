@@ -1,14 +1,17 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Bot, User, MessageSquare, Phone, CheckCircle, ShoppingCart, Eye } from "lucide-react";
+import { Bot, User, MessageSquare, Phone, CheckCircle, ShoppingCart, Eye, Send } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import type { ChatMessage } from "@/hooks/useChatHistory";
-import { useSetChatClassification } from "@/hooks/useChatHistory";
+import { useSetChatClassification, useToggleConversationMode, useSendMessage } from "@/hooks/useChatHistory";
 
 interface ChatConversationProps {
   messages: ChatMessage[];
@@ -17,10 +20,10 @@ interface ChatConversationProps {
   customerPhone: string;
   customerId: string | null;
   chatStatus: string;
+  conversationMode: string;
 }
 
 const STATUS_OPTIONS = [
-  { value: 'ai', label: 'AI Agent', icon: Bot, color: 'text-primary' },
   { value: 'revision', label: 'Revisión', icon: Eye, color: 'text-amber-500' },
   { value: 'bueno', label: 'Bueno', icon: CheckCircle, color: 'text-green-500' },
   { value: 'venta', label: 'Venta', icon: ShoppingCart, color: 'text-blue-500' },
@@ -33,9 +36,13 @@ export function ChatConversation({
   customerPhone,
   customerId,
   chatStatus,
+  conversationMode,
 }: ChatConversationProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const setClassification = useSetChatClassification();
+  const toggleMode = useToggleConversationMode();
+  const sendMessage = useSendMessage();
+  const [messageText, setMessageText] = useState("");
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -52,6 +59,21 @@ export function ChatConversation({
   }
 
   const currentStatus = STATUS_OPTIONS.find(s => s.value === chatStatus) || STATUS_OPTIONS[0];
+  const isAiMode = conversationMode === 'ai';
+
+  const handleSend = () => {
+    const text = messageText.trim();
+    if (!text || !customerId) return;
+    sendMessage.mutate({ customerId, content: text });
+    setMessageText("");
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
 
   return (
     <div className="flex-1 flex flex-col h-full">
@@ -69,6 +91,23 @@ export function ChatConversation({
           </p>
         </div>
 
+        {/* AI Mode Toggle */}
+        <div className="flex items-center gap-2 border-r border-border pr-3">
+          <Bot className={`w-4 h-4 ${isAiMode ? 'text-primary' : 'text-muted-foreground'}`} />
+          <Switch
+            checked={isAiMode}
+            onCheckedChange={(checked) => {
+              if (customerId) {
+                toggleMode.mutate({ customerId, mode: checked ? 'ai' : 'manual' });
+              }
+            }}
+            className="scale-90"
+          />
+          <span className="text-[10px] font-medium text-muted-foreground">
+            {isAiMode ? 'AI' : 'Manual'}
+          </span>
+        </div>
+
         {/* Classification Select */}
         <Select
           value={chatStatus}
@@ -78,7 +117,7 @@ export function ChatConversation({
             }
           }}
         >
-          <SelectTrigger className="w-[140px] h-8 text-xs">
+          <SelectTrigger className="w-[130px] h-8 text-xs">
             <SelectValue>
               <span className="flex items-center gap-1.5">
                 <currentStatus.icon className={`w-3.5 h-3.5 ${currentStatus.color}`} />
@@ -99,7 +138,7 @@ export function ChatConversation({
         </Select>
 
         <Badge variant="secondary" className="text-xs">
-          {messages.length} mensajes
+          {messages.length} msgs
         </Badge>
       </div>
 
@@ -172,6 +211,28 @@ export function ChatConversation({
           </div>
         )}
       </ScrollArea>
+
+      {/* Message Input */}
+      <div className="border-t border-border p-3 bg-card/50">
+        <div className="flex items-end gap-2">
+          <Textarea
+            value={messageText}
+            onChange={(e) => setMessageText(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Escribe un mensaje..."
+            className="min-h-[40px] max-h-[120px] resize-none text-sm"
+            rows={1}
+          />
+          <Button
+            size="icon"
+            onClick={handleSend}
+            disabled={!messageText.trim() || sendMessage.isPending}
+            className="shrink-0 h-10 w-10"
+          >
+            <Send className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
