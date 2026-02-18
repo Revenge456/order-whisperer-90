@@ -52,9 +52,8 @@ export function ChatList({
         </div>
         {/* Filter tabs */}
         <Tabs value={filterStatus} onValueChange={(v) => onFilterChange(v as ChatFilter)} className="w-full">
-          <TabsList className="w-full grid grid-cols-5 h-8">
+          <TabsList className="w-full grid grid-cols-4 h-8">
             <TabsTrigger value="all" className="text-[10px] px-1">Todos</TabsTrigger>
-            <TabsTrigger value="ai" className="text-[10px] px-1">AI</TabsTrigger>
             <TabsTrigger value="revision" className="text-[10px] px-1">Revisión</TabsTrigger>
             <TabsTrigger value="buenos" className="text-[10px] px-1">Buenos</TabsTrigger>
             <TabsTrigger value="ventas" className="text-[10px] px-1">Ventas</TabsTrigger>
@@ -121,11 +120,12 @@ export function ChatList({
                       {chat.last_message}
                     </p>
                     <div className="flex items-center gap-2 mt-1">
-                      {chat.chat_status === 'ai' ? (
+                      {chat.conversation_mode === 'ai' && (
                         <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1 border-primary/30 text-primary">
                           <Bot className="w-3 h-3" /> AI
                         </Badge>
-                      ) : chat.chat_status === 'revision' ? (
+                      )}
+                      {chat.chat_status === 'revision' ? (
                         <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1 border-amber-500/30 text-amber-500">
                           <Eye className="w-3 h-3" /> Revisión
                         </Badge>
@@ -137,11 +137,7 @@ export function ChatList({
                         <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1 border-blue-500/30 text-blue-500">
                           <ShoppingCart className="w-3 h-3" /> Venta
                         </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1">
-                          <Bot className="w-3 h-3" /> AI
-                        </Badge>
-                      )}
+                      ) : null}
                       <span className="text-[10px] text-muted-foreground">
                         {chat.message_count} msgs
                       </span>
