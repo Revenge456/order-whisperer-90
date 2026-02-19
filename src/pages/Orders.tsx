@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, Eye, Clock, CheckCircle, XCircle, Package, Image, CreditCard, AlertCircle } from "lucide-react";
+import { Search, Eye, Clock, CheckCircle, XCircle, Package, Image, CreditCard, AlertCircle, MapPin, ExternalLink, MessageCircle } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,19 +22,25 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useOrders, usePendingPayments, useUpdatePayment } from "@/hooks/useOrders";
 import { filterBySearch } from "@/lib/search-utils";
 import { PaymentModal } from "@/components/modals/PaymentModal";
 import { PaymentStatusSelect } from "@/components/orders/PaymentStatusSelect";
 import { PaymentReceiptButton } from "@/components/orders/PaymentReceiptButton";
 
-import type { Tables, Enums } from "@/integrations/supabase/types";
+import type { Enums } from "@/integrations/supabase/types";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
-type OrderCompleteView = Tables<'orders_complete_view'>;
-type PendingPayment = Tables<'pending_payments_view'>;
 type OrderStatus = Enums<'order_status'>;
+
+interface ProductItem {
+  product_name: string;
+  quantity: number;
+  unit_price: number;
+  subtotal: number;
+}
 
 const orderStatusConfig: Record<OrderStatus, { label: string; style: string; icon: React.ElementType }> = {
   nuevo: { label: "Nuevo", style: "bg-warning/10 text-warning border-warning/30", icon: Clock },
@@ -42,13 +48,6 @@ const orderStatusConfig: Record<OrderStatus, { label: string; style: string; ico
   en_entrega: { label: "En Entrega", style: "bg-chart-4/10 text-chart-4 border-chart-4/30", icon: Package },
   completado: { label: "Completado", style: "bg-success/10 text-success border-success/30", icon: CheckCircle },
   cancelado: { label: "Cancelado", style: "bg-destructive/10 text-destructive border-destructive/30", icon: XCircle },
-};
-
-const paymentStatusConfig: Record<string, { label: string; style: string }> = {
-  pendiente: { label: "Pendiente", style: "bg-warning/10 text-warning border-warning/30" },
-  confirmado: { label: "Confirmado", style: "bg-success/10 text-success border-success/30" },
-  rechazado: { label: "Rechazado", style: "bg-destructive/10 text-destructive border-destructive/30" },
-  bajo_revision: { label: "En Revisión", style: "bg-chart-4/10 text-chart-4 border-chart-4/30" },
 };
 
 const methodLabels: Record<string, string> = {
@@ -60,7 +59,7 @@ export default function Orders() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [activeTab, setActiveTab] = useState("orders");
-  const [selectedPayment, setSelectedPayment] = useState<PendingPayment | null>(null);
+  const [selectedPayment, setSelectedPayment] = useState<any>(null);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 
   const { data: orders, isLoading: ordersLoading } = useOrders();
@@ -91,7 +90,7 @@ export default function Orders() {
     return 'text-destructive';
   };
 
-  const handleViewPayment = (payment: PendingPayment) => {
+  const handleViewPayment = (payment: any) => {
     setSelectedPayment(payment);
     setIsPaymentModalOpen(true);
   };
@@ -102,6 +101,47 @@ export default function Orders() {
       status: 'confirmado',
       confirmed_at: new Date().toISOString(),
     });
+  };
+
+  const openWhatsApp = (phone: string | null) => {
+    if (!phone) return;
+    const cleaned = phone.replace(/\D/g, '');
+    window.open(`https://wa.me/${cleaned}`, '_blank');
+  };
+
+  const renderProducts = (products: ProductItem[] | null) => {
+    if (!products || products.length === 0) return <span className="text-muted-foreground text-xs">—</span>;
+    return (
+      <div className="space-y-0.5">
+        {products.map((p, i) => (
+          <div key={i} className="text-xs">
+            <span className="font-medium text-foreground">{p.quantity}x</span>{' '}
+            <span className="text-foreground">{p.product_name}</span>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const renderLocation = (address: string | null, locationUrl: string | null) => {
+    if (!address && !locationUrl) return <span className="text-muted-foreground text-xs">—</span>;
+    return (
+      <div className="space-y-1">
+        {address && <p className="text-xs text-foreground max-w-[150px] truncate">{address}</p>}
+        {locationUrl && (
+          <a
+            href={locationUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+          >
+            <MapPin className="w-3 h-3" />
+            Ver mapa
+            <ExternalLink className="w-3 h-3" />
+          </a>
+        )}
+      </div>
+    );
   };
 
   // Stats
@@ -125,7 +165,6 @@ export default function Orders() {
             <h1 className="text-3xl font-bold text-foreground">Pedidos</h1>
             <p className="text-muted-foreground mt-1">Gestión de pedidos y pagos</p>
           </div>
-          
         </div>
 
         {/* Stats Cards */}
@@ -231,95 +270,115 @@ export default function Orders() {
                     ))}
                   </div>
                 ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="border-border/50">
-                        <TableHead>Pedido</TableHead>
-                        <TableHead>Cliente</TableHead>
-                        <TableHead>Estado Pedido</TableHead>
-                        <TableHead>Estado Pago</TableHead>
-                        <TableHead className="text-right">Total</TableHead>
-                        <TableHead>Ubicación</TableHead>
-                        <TableHead>Nota</TableHead>
-                        <TableHead className="text-right">Fecha</TableHead>
-                        <TableHead className="w-[100px]">Acciones</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredOrders.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
-                            No hay pedidos que coincidan
-                          </TableCell>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-border/50">
+                          <TableHead>Pedido</TableHead>
+                          <TableHead>Cliente</TableHead>
+                          <TableHead>Productos</TableHead>
+                          <TableHead>Estado</TableHead>
+                          <TableHead>Pago</TableHead>
+                          <TableHead className="text-right">Total</TableHead>
+                          <TableHead>Ubicación</TableHead>
+                          <TableHead>Nota / Accesorio</TableHead>
+                          <TableHead>Comprobante</TableHead>
+                          <TableHead className="text-right">Fecha</TableHead>
+                          <TableHead className="w-[80px]">Acciones</TableHead>
                         </TableRow>
-                      ) : (
-                        filteredOrders.map((order) => {
-                          const orderStatus = order.status as OrderStatus;
-                          const StatusIcon = orderStatusConfig[orderStatus]?.icon || Clock;
-                          
-                          return (
-                            <TableRow key={order.id} className="border-border/50 hover:bg-secondary/30">
-                              <TableCell>
-                                <div>
-                                  <p className="font-medium text-foreground">{order.order_number}</p>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div>
-                                  <p className="font-medium text-foreground">{order.customer_name || 'Sin nombre'}</p>
-                                  <p className="text-xs text-muted-foreground">{order.customer_phone}</p>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <Badge variant="outline" className={orderStatusConfig[orderStatus]?.style}>
-                                  <StatusIcon className="w-3 h-3 mr-1" />
-                                  {orderStatusConfig[orderStatus]?.label || orderStatus}
-                                </Badge>
-                              </TableCell>
-                              <TableCell onClick={(e) => e.stopPropagation()}>
-                                <PaymentStatusSelect
-                                  paymentId={order.payment_id}
-                                  currentStatus={order.payment_status}
-                                  orderId={order.id}
-                                  orderNumber={order.order_number}
-                                  customerName={order.customer_name}
-                                  customerPhone={order.customer_phone}
-                                  amount={order.payment_amount}
-                                />
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <span className="font-medium text-foreground">
-                                  Bs. {(order.total || 0).toLocaleString()}
-                                </span>
-                              </TableCell>
-                              <TableCell>
-                                <span className="text-sm text-foreground">{order.delivery_address || '—'}</span>
-                              </TableCell>
-                              <TableCell>
-                                <span className="text-sm text-foreground max-w-[200px] truncate block">{order.order_notes || '—'}</span>
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <span className="text-sm text-muted-foreground">
-                                  {formatDate(order.created_at)}
-                                </span>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex items-center gap-1">
+                      </TableHeader>
+                      <TableBody>
+                        {filteredOrders.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
+                              No hay pedidos que coincidan
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          filteredOrders.map((order) => {
+                            const orderStatus = order.status as OrderStatus;
+                            const StatusIcon = orderStatusConfig[orderStatus]?.icon || Clock;
+                            const products = (order as any).products as ProductItem[] | null;
+
+                            return (
+                              <TableRow key={order.id} className="border-border/50 hover:bg-secondary/30">
+                                <TableCell>
+                                  <p className="font-medium text-foreground text-sm">{order.order_number}</p>
+                                </TableCell>
+                                <TableCell>
+                                  <div>
+                                    <p className="font-medium text-foreground text-sm">{order.customer_name || 'Sin nombre'}</p>
+                                    <p className="text-xs text-muted-foreground">{order.customer_phone}</p>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  {renderProducts(products)}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant="outline" className={`${orderStatusConfig[orderStatus]?.style} text-xs`}>
+                                    <StatusIcon className="w-3 h-3 mr-1" />
+                                    {orderStatusConfig[orderStatus]?.label || orderStatus}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell onClick={(e) => e.stopPropagation()}>
+                                  <PaymentStatusSelect
+                                    paymentId={order.payment_id}
+                                    currentStatus={order.payment_status}
+                                    orderId={order.id}
+                                    orderNumber={order.order_number}
+                                    customerName={order.customer_name}
+                                    customerPhone={order.customer_phone}
+                                    amount={order.payment_amount}
+                                  />
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <span className="font-medium text-foreground text-sm">
+                                    Bs. {(order.total || 0).toLocaleString()}
+                                  </span>
+                                </TableCell>
+                                <TableCell>
+                                  {renderLocation(order.delivery_address, order.location_url)}
+                                </TableCell>
+                                <TableCell>
+                                  <span className="text-xs text-foreground max-w-[150px] truncate block">
+                                    {order.order_notes || '—'}
+                                  </span>
+                                </TableCell>
+                                <TableCell>
                                   <PaymentReceiptButton
                                     screenshotUrl={order.screenshot_url}
                                     orderNumber={order.order_number}
                                   />
-                                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                                    <Eye className="w-4 h-4" />
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })
-                      )}
-                    </TableBody>
-                  </Table>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <span className="text-xs text-muted-foreground">
+                                    {formatDate(order.created_at)}
+                                  </span>
+                                </TableCell>
+                                <TableCell>
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-8 w-8 text-success hover:text-success/80"
+                                          onClick={() => openWhatsApp(order.customer_phone)}
+                                        >
+                                          <MessageCircle className="w-4 h-4" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Abrir WhatsApp</TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -339,13 +398,12 @@ export default function Orders() {
               <div className="space-y-4">
                 {filteredPayments.map((payment) => {
                   const waitingMinutes = payment.minutes_waiting || 0;
-                  
+
                   return (
                     <Card key={payment.payment_id} className="glass border-border/50 hover:border-primary/30 transition-colors">
                       <CardContent className="pt-6">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                           <div className="flex items-start gap-4">
-                            {/* Payment Icon/Image indicator */}
                             <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                               {payment.screenshot_url ? (
                                 <Image className="w-6 h-6 text-primary" />
@@ -353,7 +411,7 @@ export default function Orders() {
                                 <CreditCard className="w-6 h-6 text-primary" />
                               )}
                             </div>
-                            
+
                             <div className="space-y-1">
                               <div className="flex items-center gap-2">
                                 <p className="font-medium text-foreground">{payment.order_number}</p>
@@ -372,7 +430,7 @@ export default function Orders() {
                               </div>
                             </div>
                           </div>
-                          
+
                           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                             <div className="text-right">
                               <p className="text-2xl font-bold text-foreground">
@@ -382,7 +440,7 @@ export default function Orders() {
                                 {formatDate(payment.created_at)}
                               </p>
                             </div>
-                            
+
                             <div className="flex gap-2">
                               <Button
                                 variant="outline"
