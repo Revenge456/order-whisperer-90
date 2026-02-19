@@ -449,13 +449,6 @@ export type Database = {
             foreignKeyName: "orders_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
-            referencedRelation: "orders_complete_view"
-            referencedColumns: ["customer_id"]
-          },
-          {
-            foreignKeyName: "orders_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
             referencedRelation: "pending_payments_view"
             referencedColumns: ["customer_id"]
           },
@@ -825,13 +818,6 @@ export type Database = {
             foreignKeyName: "system_notifications_related_customer_id_fkey"
             columns: ["related_customer_id"]
             isOneToOne: false
-            referencedRelation: "orders_complete_view"
-            referencedColumns: ["customer_id"]
-          },
-          {
-            foreignKeyName: "system_notifications_related_customer_id_fkey"
-            columns: ["related_customer_id"]
-            isOneToOne: false
             referencedRelation: "pending_payments_view"
             referencedColumns: ["customer_id"]
           },
@@ -1068,13 +1054,6 @@ export type Database = {
             foreignKeyName: "whatsapp_logs_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
-            referencedRelation: "orders_complete_view"
-            referencedColumns: ["customer_id"]
-          },
-          {
-            foreignKeyName: "whatsapp_logs_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
             referencedRelation: "pending_payments_view"
             referencedColumns: ["customer_id"]
           },
@@ -1152,6 +1131,7 @@ export type Database = {
             | Database["public"]["Enums"]["conversation_mode"]
             | null
           created_at: string | null
+          custom_fields: Json | null
           customer_address: string | null
           customer_id: string | null
           customer_name: string | null
@@ -1173,12 +1153,42 @@ export type Database = {
           payment_method: Database["public"]["Enums"]["payment_method"] | null
           payment_notes: string | null
           payment_status: Database["public"]["Enums"]["payment_status"] | null
+          products: Json | null
           screenshot_url: string | null
           status: Database["public"]["Enums"]["order_status"] | null
           total: number | null
           updated_at: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "orders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "active_deliveries_view"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "orders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer_stats_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "pending_payments_view"
+            referencedColumns: ["customer_id"]
+          },
+        ]
       }
       pending_payments_view: {
         Row: {
