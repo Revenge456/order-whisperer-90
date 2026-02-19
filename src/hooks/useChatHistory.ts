@@ -160,7 +160,7 @@ export function useChatMessages(customerId: string | null) {
   return query;
 }
 
-const MANUAL_MESSAGE_WEBHOOK_URL = "https://n8n.groupquimera.com/webhook-test/3f5c16f0-3b20-4429-abbe-ba2a87c25718";
+const MANUAL_MESSAGE_WEBHOOK_URL = "https://n8n.groupquimera.com/webhook/3f5c16f0-3b20-4429-abbe-ba2a87c25718";
 
 export function useSendMessage() {
   const queryClient = useQueryClient();
