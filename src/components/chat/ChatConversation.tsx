@@ -64,7 +64,7 @@ export function ChatConversation({
   const handleSend = () => {
     const text = messageText.trim();
     if (!text || !customerId) return;
-    sendMessage.mutate({ customerId, content: text });
+    sendMessage.mutate({ customerId, content: text, customerPhone, customerName });
     setMessageText("");
   };
 

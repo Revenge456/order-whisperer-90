@@ -158,10 +158,13 @@ export function useChatMessages(customerId: string | null) {
   return query;
 }
 
+const MANUAL_MESSAGE_WEBHOOK_URL = 'https://n8n.groupquimera.com/webhook/3f5c16f0-3b20-4429-abbe-ba2a87c25718';
+
 export function useSendMessage() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ customerId, content }: { customerId: string; content: string }) => {
+    mutationFn: async ({ customerId, content, customerPhone, customerName }: { customerId: string; content: string; customerPhone?: string; customerName?: string }) => {
+      // 1. Save to database
       const { error } = await supabase.from('whatsapp_logs').insert({
         customer_id: customerId,
         content,
@@ -170,6 +173,24 @@ export function useSendMessage() {
         ai_agent_phase: 'manual',
       });
       if (error) throw error;
+
+      // 2. Send to n8n webhook for WhatsApp delivery
+      try {
+        await fetch(MANUAL_MESSAGE_WEBHOOK_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          mode: 'no-cors',
+          body: JSON.stringify({
+            customer_id: customerId,
+            customer_phone: customerPhone || '',
+            customer_name: customerName || '',
+            content,
+          }),
+        });
+      } catch (webhookError) {
+        console.error('Webhook delivery failed:', webhookError);
+        // Don't throw - message is saved, just delivery failed
+      }
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['chat-messages', variables.customerId] });
