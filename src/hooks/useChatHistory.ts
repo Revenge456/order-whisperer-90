@@ -1,7 +1,7 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { useMemo, useEffect } from 'react';
-import { toast } from 'sonner';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useMemo, useEffect } from "react";
+import { toast } from "sonner";
 
 export interface ChatMessage {
   id: string;
@@ -24,16 +24,20 @@ export interface ChatSummary {
   conversation_mode: string;
 }
 
-export type ChatFilter = 'all' | 'ai' | 'revision' | 'buenos' | 'ventas';
+export type ChatFilter = "all" | "ai" | "revision" | "buenos" | "ventas";
 
 export function useChatList(search: string, filterStatus: ChatFilter) {
-  const { data: logs, isLoading: logsLoading, error: logsError } = useQuery({
-    queryKey: ['chat-list'],
+  const {
+    data: logs,
+    isLoading: logsLoading,
+    error: logsError,
+  } = useQuery({
+    queryKey: ["chat-list"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('whatsapp_logs')
-        .select('id, customer_id, content, message_type, is_automated, ai_agent_phase, created_at')
-        .order('created_at', { ascending: false })
+        .from("whatsapp_logs")
+        .select("id, customer_id, content, message_type, is_automated, ai_agent_phase, created_at")
+        .order("created_at", { ascending: false })
         .limit(1000);
       if (error) throw error;
       return data as ChatMessage[];
@@ -41,11 +45,11 @@ export function useChatList(search: string, filterStatus: ChatFilter) {
   });
 
   const { data: customers, isLoading: customersLoading } = useQuery({
-    queryKey: ['chat-customers'],
+    queryKey: ["chat-customers"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('customers')
-        .select('id, name, phone, conversation_mode, chat_status');
+        .from("customers")
+        .select("id, name, phone, conversation_mode, chat_status");
       if (error) throw error;
       return data;
     },
@@ -54,7 +58,7 @@ export function useChatList(search: string, filterStatus: ChatFilter) {
   const chatList = useMemo(() => {
     if (!logs || !customers) return [];
 
-    const customerMap = new Map(customers.map(c => [c.id, c]));
+    const customerMap = new Map(customers.map((c) => [c.id, c]));
     const grouped = new Map<string, ChatMessage[]>();
 
     for (const log of logs) {
@@ -72,13 +76,13 @@ export function useChatList(search: string, filterStatus: ChatFilter) {
       const lastMsg = messages[0];
       summaries.push({
         customer_id: customerId,
-        customer_name: customer.name || 'Sin nombre',
+        customer_name: customer.name || "Sin nombre",
         customer_phone: customer.phone,
         last_message: lastMsg.content,
         last_message_at: lastMsg.created_at,
         message_count: messages.length,
-        chat_status: (customer as any).chat_status || 'revision',
-        conversation_mode: customer.conversation_mode || 'ai',
+        chat_status: (customer as any).chat_status || "revision",
+        conversation_mode: customer.conversation_mode || "ai",
       });
     }
 
@@ -86,19 +90,17 @@ export function useChatList(search: string, filterStatus: ChatFilter) {
 
     if (search) {
       const q = search.toLowerCase();
-      filtered = filtered.filter(
-        c => c.customer_name.toLowerCase().includes(q) || c.customer_phone.includes(q)
-      );
+      filtered = filtered.filter((c) => c.customer_name.toLowerCase().includes(q) || c.customer_phone.includes(q));
     }
 
-    if (filterStatus === 'ai') {
-      filtered = filtered.filter(c => c.conversation_mode === 'ai');
-    } else if (filterStatus === 'revision') {
-      filtered = filtered.filter(c => c.chat_status === 'revision');
-    } else if (filterStatus === 'buenos') {
-      filtered = filtered.filter(c => c.chat_status === 'bueno');
-    } else if (filterStatus === 'ventas') {
-      filtered = filtered.filter(c => c.chat_status === 'venta');
+    if (filterStatus === "ai") {
+      filtered = filtered.filter((c) => c.conversation_mode === "ai");
+    } else if (filterStatus === "revision") {
+      filtered = filtered.filter((c) => c.chat_status === "revision");
+    } else if (filterStatus === "buenos") {
+      filtered = filtered.filter((c) => c.chat_status === "bueno");
+    } else if (filterStatus === "ventas") {
+      filtered = filtered.filter((c) => c.chat_status === "venta");
     }
 
     return filtered.sort((a, b) => new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime());
@@ -115,14 +117,14 @@ export function useChatMessages(customerId: string | null) {
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ['chat-messages', customerId],
+    queryKey: ["chat-messages", customerId],
     queryFn: async () => {
       if (!customerId) return [];
       const { data, error } = await supabase
-        .from('whatsapp_logs')
-        .select('id, customer_id, content, message_type, is_automated, ai_agent_phase, created_at')
-        .eq('customer_id', customerId)
-        .order('created_at', { ascending: true });
+        .from("whatsapp_logs")
+        .select("id, customer_id, content, message_type, is_automated, ai_agent_phase, created_at")
+        .eq("customer_id", customerId)
+        .order("created_at", { ascending: true });
       if (error) throw error;
       return data as ChatMessage[];
     },
@@ -136,17 +138,17 @@ export function useChatMessages(customerId: string | null) {
     const channel = supabase
       .channel(`whatsapp_logs:${customerId}`)
       .on(
-        'postgres_changes',
+        "postgres_changes",
         {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'whatsapp_logs',
+          event: "INSERT",
+          schema: "public",
+          table: "whatsapp_logs",
           filter: `customer_id=eq.${customerId}`,
         },
         () => {
-          queryClient.invalidateQueries({ queryKey: ['chat-messages', customerId] });
-          queryClient.invalidateQueries({ queryKey: ['chat-list'] });
-        }
+          queryClient.invalidateQueries({ queryKey: ["chat-messages", customerId] });
+          queryClient.invalidateQueries({ queryKey: ["chat-list"] });
+        },
       )
       .subscribe();
 
@@ -158,45 +160,55 @@ export function useChatMessages(customerId: string | null) {
   return query;
 }
 
-const MANUAL_MESSAGE_WEBHOOK_URL = 'https://n8n.groupquimera.com/webhook/3f5c16f0-3b20-4429-abbe-ba2a87c25718';
+const MANUAL_MESSAGE_WEBHOOK_URL = "https://n8n.groupquimera.com/webhook-test/3f5c16f0-3b20-4429-abbe-ba2a87c25718";
 
 export function useSendMessage() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ customerId, content, customerPhone, customerName }: { customerId: string; content: string; customerPhone?: string; customerName?: string }) => {
+    mutationFn: async ({
+      customerId,
+      content,
+      customerPhone,
+      customerName,
+    }: {
+      customerId: string;
+      content: string;
+      customerPhone?: string;
+      customerName?: string;
+    }) => {
       // 1. Save to database
-      const { error } = await supabase.from('whatsapp_logs').insert({
+      const { error } = await supabase.from("whatsapp_logs").insert({
         customer_id: customerId,
         content,
-        message_type: 'outgoing',
+        message_type: "outgoing",
         is_automated: false,
-        ai_agent_phase: 'manual',
+        ai_agent_phase: "manual",
       });
       if (error) throw error;
 
       // 2. Send to n8n webhook for WhatsApp delivery
       try {
         await fetch(MANUAL_MESSAGE_WEBHOOK_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          mode: 'no-cors',
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          mode: "no-cors",
           body: JSON.stringify({
             customer_id: customerId,
-            customer_phone: customerPhone || '',
-            customer_name: customerName || '',
+            customer_phone: customerPhone || "",
+            customer_name: customerName || "",
             content,
           }),
         });
       } catch (webhookError) {
-        console.error('Webhook delivery failed:', webhookError);
+        console.error("Webhook delivery failed:", webhookError);
         // Don't throw - message is saved, just delivery failed
       }
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['chat-messages', variables.customerId] });
-      queryClient.invalidateQueries({ queryKey: ['chat-list'] });
+      queryClient.invalidateQueries({ queryKey: ["chat-messages", variables.customerId] });
+      queryClient.invalidateQueries({ queryKey: ["chat-list"] });
     },
-    onError: (err: Error) => toast.error('Error al enviar: ' + err.message),
+    onError: (err: Error) => toast.error("Error al enviar: " + err.message),
   });
 }
 
@@ -204,38 +216,32 @@ export function useSetChatClassification() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ customerId, status }: { customerId: string; status: string }) => {
-      const { error } = await supabase
-        .from('customers')
-        .update({ chat_status: status })
-        .eq('id', customerId);
+      const { error } = await supabase.from("customers").update({ chat_status: status }).eq("id", customerId);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['chat-list'] });
-      queryClient.invalidateQueries({ queryKey: ['chat-customers'] });
-      queryClient.invalidateQueries({ queryKey: ['customers'] });
-      toast.success('Clasificación actualizada');
+      queryClient.invalidateQueries({ queryKey: ["chat-list"] });
+      queryClient.invalidateQueries({ queryKey: ["chat-customers"] });
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
+      toast.success("Clasificación actualizada");
     },
-    onError: (err: Error) => toast.error('Error: ' + err.message),
+    onError: (err: Error) => toast.error("Error: " + err.message),
   });
 }
 
 export function useToggleConversationMode() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ customerId, mode }: { customerId: string; mode: 'ai' | 'manual' }) => {
-      const { error } = await supabase
-        .from('customers')
-        .update({ conversation_mode: mode })
-        .eq('id', customerId);
+    mutationFn: async ({ customerId, mode }: { customerId: string; mode: "ai" | "manual" }) => {
+      const { error } = await supabase.from("customers").update({ conversation_mode: mode }).eq("id", customerId);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['chat-list'] });
-      queryClient.invalidateQueries({ queryKey: ['chat-customers'] });
-      queryClient.invalidateQueries({ queryKey: ['customers'] });
-      toast.success('Modo de conversación actualizado');
+      queryClient.invalidateQueries({ queryKey: ["chat-list"] });
+      queryClient.invalidateQueries({ queryKey: ["chat-customers"] });
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
+      toast.success("Modo de conversación actualizado");
     },
-    onError: (err: Error) => toast.error('Error: ' + err.message),
+    onError: (err: Error) => toast.error("Error: " + err.message),
   });
 }
