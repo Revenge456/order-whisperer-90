@@ -37,8 +37,7 @@ export function useChatList(search: string, filterStatus: ChatFilter) {
       const { data, error } = await supabase
         .from("whatsapp_logs")
         .select("id, customer_id, content, message_type, is_automated, ai_agent_phase, created_at")
-        .order("created_at", { ascending: false })
-        .limit(1000);
+        .order("created_at", { ascending: false });
       if (error) throw error;
       return data as ChatMessage[];
     },
