@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, Eye, Clock, CheckCircle, XCircle, Package, Image, CreditCard, AlertCircle, MapPin, ExternalLink, MessageCircle } from "lucide-react";
+import { Search, Eye, Clock, CheckCircle, XCircle, Package, Image, CreditCard, AlertCircle, MapPin, ExternalLink, MessageCircle, ChevronDown, ChevronUp, ShoppingBag } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,6 +61,7 @@ export default function Orders() {
   const [activeTab, setActiveTab] = useState("orders");
   const [selectedPayment, setSelectedPayment] = useState<any>(null);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
 
   const { data: orders, isLoading: ordersLoading } = useOrders();
   const { data: pendingPayments, isLoading: paymentsLoading } = usePendingPayments();
@@ -299,80 +300,214 @@ export default function Orders() {
                             const orderStatus = order.status as OrderStatus;
                             const StatusIcon = orderStatusConfig[orderStatus]?.icon || Clock;
                             const products = (order as any).products as ProductItem[] | null;
+                            const isExpanded = expandedOrderId === order.id;
+                            const totalItems = products?.reduce((sum, p) => sum + p.quantity, 0) || 0;
 
                             return (
-                              <TableRow key={order.id} className="border-border/50 hover:bg-secondary/30">
-                                <TableCell>
-                                  <p className="font-medium text-foreground text-sm">{order.order_number}</p>
-                                </TableCell>
-                                <TableCell>
-                                  <div>
-                                    <p className="font-medium text-foreground text-sm">{order.customer_name || 'Sin nombre'}</p>
-                                    <p className="text-xs text-muted-foreground">{order.customer_phone}</p>
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  {renderProducts(products)}
-                                </TableCell>
-                                <TableCell>
-                                  <Badge variant="outline" className={`${orderStatusConfig[orderStatus]?.style} text-xs`}>
-                                    <StatusIcon className="w-3 h-3 mr-1" />
-                                    {orderStatusConfig[orderStatus]?.label || orderStatus}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell onClick={(e) => e.stopPropagation()}>
-                                  <PaymentStatusSelect
-                                    paymentId={order.payment_id}
-                                    currentStatus={order.payment_status}
-                                    orderId={order.id}
-                                    orderNumber={order.order_number}
-                                    customerName={order.customer_name}
-                                    customerPhone={order.customer_phone}
-                                    amount={order.payment_amount}
-                                  />
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  <span className="font-medium text-foreground text-sm">
-                                    Bs. {(order.total || 0).toLocaleString()}
-                                  </span>
-                                </TableCell>
-                                <TableCell>
-                                  {renderLocation(order.delivery_address, order.location_url)}
-                                </TableCell>
-                                <TableCell>
-                                  <span className="text-xs text-foreground max-w-[150px] truncate block">
-                                    {order.order_notes || '—'}
-                                  </span>
-                                </TableCell>
-                                <TableCell>
-                                  <PaymentReceiptButton
-                                    screenshotUrl={order.screenshot_url}
-                                    orderNumber={order.order_number}
-                                  />
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  <span className="text-xs text-muted-foreground">
-                                    {formatDate(order.created_at)}
-                                  </span>
-                                </TableCell>
-                                <TableCell>
-                                  <TooltipProvider>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-8 w-8 text-success hover:text-success/80"
-                                          onClick={() => openWhatsApp(order.customer_phone)}
-                                        >
-                                          <MessageCircle className="w-4 h-4" />
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent>Abrir WhatsApp</TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
-                                </TableCell>
-                              </TableRow>
+                              <>
+                                <TableRow
+                                  key={order.id}
+                                  className="border-border/50 hover:bg-secondary/30 cursor-pointer transition-colors"
+                                  onClick={() => setExpandedOrderId(isExpanded ? null : order.id)}
+                                >
+                                  <TableCell>
+                                    <div className="flex items-center gap-2">
+                                      {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                                      <p className="font-medium text-foreground text-sm">{order.order_number}</p>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>
+                                    <div>
+                                      <p className="font-medium text-foreground text-sm">{order.customer_name || 'Sin nombre'}</p>
+                                      <p className="text-xs text-muted-foreground">{order.customer_phone}</p>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>
+                                    <div className="flex items-center gap-1.5">
+                                      <ShoppingBag className="w-3.5 h-3.5 text-muted-foreground" />
+                                      <span className="text-sm font-medium text-foreground">{totalItems} item{totalItems !== 1 ? 's' : ''}</span>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>
+                                    <Badge variant="outline" className={`${orderStatusConfig[orderStatus]?.style} text-xs`}>
+                                      <StatusIcon className="w-3 h-3 mr-1" />
+                                      {orderStatusConfig[orderStatus]?.label || orderStatus}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell onClick={(e) => e.stopPropagation()}>
+                                    <PaymentStatusSelect
+                                      paymentId={order.payment_id}
+                                      currentStatus={order.payment_status}
+                                      orderId={order.id}
+                                      orderNumber={order.order_number}
+                                      customerName={order.customer_name}
+                                      customerPhone={order.customer_phone}
+                                      amount={order.payment_amount}
+                                    />
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    <span className="font-medium text-foreground text-sm">
+                                      Bs. {(order.total || 0).toLocaleString()}
+                                    </span>
+                                  </TableCell>
+                                  <TableCell>
+                                    {renderLocation(order.delivery_address, order.location_url)}
+                                  </TableCell>
+                                  <TableCell>
+                                    <span className="text-xs text-foreground max-w-[150px] truncate block">
+                                      {order.order_notes || '—'}
+                                    </span>
+                                  </TableCell>
+                                  <TableCell onClick={(e) => e.stopPropagation()}>
+                                    <PaymentReceiptButton
+                                      screenshotUrl={order.screenshot_url}
+                                      orderNumber={order.order_number}
+                                    />
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    <span className="text-xs text-muted-foreground">
+                                      {formatDate(order.created_at)}
+                                    </span>
+                                  </TableCell>
+                                  <TableCell onClick={(e) => e.stopPropagation()}>
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 text-success hover:text-success/80"
+                                            onClick={() => openWhatsApp(order.customer_phone)}
+                                          >
+                                            <MessageCircle className="w-4 h-4" />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Abrir WhatsApp</TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                  </TableCell>
+                                </TableRow>
+
+                                {/* Expanded detail row */}
+                                {isExpanded && (
+                                  <TableRow key={`${order.id}-detail`} className="bg-secondary/20 border-border/30">
+                                    <TableCell colSpan={11} className="p-0">
+                                      <div className="px-6 py-4 animate-fade-in">
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                          {/* Products detail */}
+                                          <div className="space-y-3">
+                                            <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                                              <ShoppingBag className="w-4 h-4 text-primary" />
+                                              Productos ({totalItems} unidades)
+                                            </h4>
+                                            {products && products.length > 0 ? (
+                                              <div className="space-y-2">
+                                                {products.map((p, i) => (
+                                                  <div key={i} className="flex items-center justify-between bg-background/60 rounded-lg px-3 py-2 border border-border/30">
+                                                    <div>
+                                                      <p className="text-sm font-medium text-foreground">{p.product_name}</p>
+                                                      <p className="text-xs text-muted-foreground">Bs. {p.unit_price?.toLocaleString()} c/u</p>
+                                                    </div>
+                                                    <div className="text-right">
+                                                      <Badge variant="secondary" className="text-xs">{p.quantity}x</Badge>
+                                                      <p className="text-xs font-medium text-foreground mt-0.5">Bs. {p.subtotal?.toLocaleString()}</p>
+                                                    </div>
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            ) : (
+                                              <p className="text-xs text-muted-foreground">Sin productos registrados</p>
+                                            )}
+                                          </div>
+
+                                          {/* Delivery & Location */}
+                                          <div className="space-y-3">
+                                            <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                                              <MapPin className="w-4 h-4 text-primary" />
+                                              Entrega
+                                            </h4>
+                                            <div className="bg-background/60 rounded-lg px-3 py-2 border border-border/30 space-y-2">
+                                              <div>
+                                                <p className="text-xs text-muted-foreground">Dirección</p>
+                                                <p className="text-sm text-foreground">{order.delivery_address || order.customer_address || '—'}</p>
+                                              </div>
+                                              {order.location_url && (
+                                                <a
+                                                  href={order.location_url}
+                                                  target="_blank"
+                                                  rel="noopener noreferrer"
+                                                  className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
+                                                >
+                                                  <MapPin className="w-4 h-4" />
+                                                  Abrir en Google Maps
+                                                  <ExternalLink className="w-3 h-3" />
+                                                </a>
+                                              )}
+                                              {order.driver_name && (
+                                                <div>
+                                                  <p className="text-xs text-muted-foreground">Repartidor</p>
+                                                  <p className="text-sm text-foreground">{order.driver_name} {order.driver_phone ? `· ${order.driver_phone}` : ''}</p>
+                                                </div>
+                                              )}
+                                            </div>
+                                            {order.order_notes && (
+                                              <div className="bg-background/60 rounded-lg px-3 py-2 border border-border/30">
+                                                <p className="text-xs text-muted-foreground">Nota / Accesorio gratis</p>
+                                                <p className="text-sm text-foreground">{order.order_notes}</p>
+                                              </div>
+                                            )}
+                                          </div>
+
+                                          {/* Payment detail */}
+                                          <div className="space-y-3">
+                                            <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                                              <CreditCard className="w-4 h-4 text-primary" />
+                                              Pago
+                                            </h4>
+                                            <div className="bg-background/60 rounded-lg px-3 py-2 border border-border/30 space-y-2">
+                                              <div className="flex justify-between">
+                                                <span className="text-xs text-muted-foreground">Método</span>
+                                                <span className="text-sm font-medium text-foreground">{methodLabels[order.payment_method || ''] || order.payment_method || '—'}</span>
+                                              </div>
+                                              <div className="flex justify-between">
+                                                <span className="text-xs text-muted-foreground">Monto</span>
+                                                <span className="text-sm font-medium text-foreground">Bs. {(order.payment_amount || order.total || 0).toLocaleString()}</span>
+                                              </div>
+                                              <div className="flex justify-between items-center">
+                                                <span className="text-xs text-muted-foreground">Estado</span>
+                                                <Badge variant="outline" className="text-xs">
+                                                  {order.payment_status || '—'}
+                                                </Badge>
+                                              </div>
+                                              {order.screenshot_url && (
+                                                <div className="pt-1">
+                                                  <p className="text-xs text-muted-foreground mb-1">Comprobante</p>
+                                                  <a href={order.screenshot_url} target="_blank" rel="noopener noreferrer">
+                                                    <img
+                                                      src={order.screenshot_url}
+                                                      alt="Comprobante de pago"
+                                                      className="rounded-md border border-border/50 max-h-32 object-cover hover:opacity-80 transition-opacity"
+                                                    />
+                                                  </a>
+                                                </div>
+                                              )}
+                                            </div>
+                                            <Button
+                                              variant="outline"
+                                              size="sm"
+                                              className="w-full text-success border-success/30 hover:bg-success/10"
+                                              onClick={(e) => { e.stopPropagation(); openWhatsApp(order.customer_phone); }}
+                                            >
+                                              <MessageCircle className="w-4 h-4 mr-2" />
+                                              Contactar por WhatsApp
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </TableCell>
+                                  </TableRow>
+                                )}
+                              </>
                             );
                           })
                         )}
