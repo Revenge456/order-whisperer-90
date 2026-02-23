@@ -34,12 +34,28 @@ export function useChatList(search: string, filterStatus: ChatFilter) {
   } = useQuery({
     queryKey: ["chat-list"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("whatsapp_logs")
-        .select("id, customer_id, content, message_type, is_automated, ai_agent_phase, created_at")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data as ChatMessage[];
+      const allData: ChatMessage[] = [];
+      const batchSize = 1000;
+      let offset = 0;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("whatsapp_logs")
+          .select("id, customer_id, content, message_type, is_automated, ai_agent_phase, created_at")
+          .order("created_at", { ascending: false })
+          .range(offset, offset + batchSize - 1);
+        if (error) throw error;
+        if (data && data.length > 0) {
+          allData.push(...(data as ChatMessage[]));
+          offset += batchSize;
+          hasMore = data.length === batchSize;
+        } else {
+          hasMore = false;
+        }
+      }
+
+      return allData;
     },
   });
 
