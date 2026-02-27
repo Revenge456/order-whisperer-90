@@ -600,6 +600,7 @@ export type Database = {
           is_active: boolean | null
           low_stock_threshold: number | null
           name: string
+          photo_id: string | null
           price: number
           stock: number
           updated_at: string | null
@@ -614,6 +615,7 @@ export type Database = {
           is_active?: boolean | null
           low_stock_threshold?: number | null
           name: string
+          photo_id?: string | null
           price: number
           stock?: number
           updated_at?: string | null
@@ -628,6 +630,7 @@ export type Database = {
           is_active?: boolean | null
           low_stock_threshold?: number | null
           name?: string
+          photo_id?: string | null
           price?: number
           stock?: number
           updated_at?: string | null
@@ -641,6 +644,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sent_product_photo: {
+        Row: {
+          client_phone: string | null
+          created_at: string
+          id: number
+          message_id: string | null
+          product_name: string | null
+        }
+        Insert: {
+          client_phone?: string | null
+          created_at?: string
+          id?: number
+          message_id?: string | null
+          product_name?: string | null
+        }
+        Update: {
+          client_phone?: string | null
+          created_at?: string
+          id?: number
+          message_id?: string | null
+          product_name?: string | null
+        }
+        Relationships: []
+      }
+      sent_product_photos: {
+        Row: {
+          client_phone: string | null
+          created_at: string
+          id: number
+          message_id: string | null
+          product_description: string | null
+          product_name: string | null
+        }
+        Insert: {
+          client_phone?: string | null
+          created_at?: string
+          id?: number
+          message_id?: string | null
+          product_description?: string | null
+          product_name?: string | null
+        }
+        Update: {
+          client_phone?: string | null
+          created_at?: string
+          id?: number
+          message_id?: string | null
+          product_description?: string | null
+          product_name?: string | null
+        }
+        Relationships: []
       }
       stock_movements: {
         Row: {
