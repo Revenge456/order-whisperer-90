@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, Eye, Clock, CheckCircle, XCircle, Package, Image, CreditCard, AlertCircle, MapPin, ExternalLink, MessageCircle, ChevronDown, ChevronUp, ShoppingBag } from "lucide-react";
+import { Search, Eye, Clock, CheckCircle, XCircle, Package, Image, CreditCard, AlertCircle, MapPin, ExternalLink, MessageCircle, ChevronDown, ChevronUp, ShoppingBag, Trash2 } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +23,17 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { useOrders, usePendingPayments, useUpdatePayment } from "@/hooks/useOrders";
+import { useOrders, usePendingPayments, useUpdatePayment, useDeleteOrder } from "@/hooks/useOrders";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { filterBySearch } from "@/lib/search-utils";
 import { PaymentModal } from "@/components/modals/PaymentModal";
 import { PaymentStatusSelect } from "@/components/orders/PaymentStatusSelect";
@@ -62,10 +72,12 @@ export default function Orders() {
   const [selectedPayment, setSelectedPayment] = useState<any>(null);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+  const [deleteOrderId, setDeleteOrderId] = useState<string | null>(null);
 
   const { data: orders, isLoading: ordersLoading } = useOrders();
   const { data: pendingPayments, isLoading: paymentsLoading } = usePendingPayments();
   const updatePayment = useUpdatePayment();
+  const deleteOrder = useDeleteOrder();
 
   const filteredOrders = filterBySearch(
     orders?.filter(o => statusFilter === "all" || o.status === statusFilter) || [],
@@ -370,21 +382,38 @@ export default function Orders() {
                                     </span>
                                   </TableCell>
                                   <TableCell onClick={(e) => e.stopPropagation()}>
-                                    <TooltipProvider>
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-8 w-8 text-success hover:text-success/80"
-                                            onClick={() => openWhatsApp(order.customer_phone)}
-                                          >
-                                            <MessageCircle className="w-4 h-4" />
-                                          </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>Abrir WhatsApp</TooltipContent>
-                                      </Tooltip>
-                                    </TooltipProvider>
+                                    <div className="flex items-center gap-1">
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Button
+                                              variant="ghost"
+                                              size="icon"
+                                              className="h-8 w-8 text-success hover:text-success/80"
+                                              onClick={() => openWhatsApp(order.customer_phone)}
+                                            >
+                                              <MessageCircle className="w-4 h-4" />
+                                            </Button>
+                                          </TooltipTrigger>
+                                          <TooltipContent>Abrir WhatsApp</TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Button
+                                              variant="ghost"
+                                              size="icon"
+                                              className="h-8 w-8 text-destructive hover:text-destructive/80"
+                                              onClick={() => setDeleteOrderId(order.id!)}
+                                            >
+                                              <Trash2 className="w-4 h-4" />
+                                            </Button>
+                                          </TooltipTrigger>
+                                          <TooltipContent>Eliminar pedido</TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    </div>
                                   </TableCell>
                                 </TableRow>
 
@@ -615,6 +644,33 @@ export default function Orders() {
         onOpenChange={setIsPaymentModalOpen}
         payment={selectedPayment}
       />
+
+      <AlertDialog open={!!deleteOrderId} onOpenChange={(open) => !open && setDeleteOrderId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar este pedido?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción eliminará el pedido junto con sus items, pago y entrega asociados. No se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteOrder.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (deleteOrderId) {
+                  deleteOrder.mutate(deleteOrderId, {
+                    onSuccess: () => setDeleteOrderId(null),
+                  });
+                }
+              }}
+              disabled={deleteOrder.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteOrder.isPending ? 'Eliminando...' : 'Eliminar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 }
