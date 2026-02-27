@@ -91,6 +91,34 @@ export function useUpdatePayment() {
   });
 }
 
+export function useDeleteOrder() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (orderId: string) => {
+      // Delete related records first
+      await supabase.from('deliveries').delete().eq('order_id', orderId);
+      await supabase.from('payments').delete().eq('order_id', orderId);
+      await supabase.from('order_items').delete().eq('order_id', orderId);
+      
+      const { error } = await supabase
+        .from('orders')
+        .delete()
+        .eq('id', orderId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['pending-payments'] });
+      toast.success('Pedido eliminado');
+    },
+    onError: (error: Error) => {
+      toast.error('Error: ' + error.message);
+    },
+  });
+}
+
 export function usePendingPayments() {
   return useQuery({
     queryKey: ['pending-payments'],
