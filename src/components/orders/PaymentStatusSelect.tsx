@@ -1,21 +1,16 @@
-import { useState } from 'react';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { Loader2 } from 'lucide-react';
-import { useUpdatePayment } from '@/hooks/useOrders';
-import { useN8nWebhook, PAYMENT_EVENTS } from '@/hooks/useN8nWebhook';
-import type { Enums } from '@/integrations/supabase/types';
+import { useState } from "react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Loader2 } from "lucide-react";
+import { useUpdatePayment } from "@/hooks/useOrders";
+import { useN8nWebhook, PAYMENT_EVENTS } from "@/hooks/useN8nWebhook";
+import type { Enums } from "@/integrations/supabase/types";
 
-const N8N_PAYMENT_WEBHOOK_URL = 'https://n8n.groupquimera.com/webhook/1eec3f11-5e72-41d2-8d27-516a55ba1b07';
-const N8N_ORDER_CONFIRMED_WEBHOOK_URL = 'https://n8n.groupquimera.com/webhook/5a2f3445-76bb-4251-b1a2-556f698319fb';
+const N8N_PAYMENT_WEBHOOK_URL = "https://n8n.groupquimera.com/webhook/1eec3f11-5e72-41d2-8d27-516a55ba1b07";
+const N8N_ORDER_CONFIRMED_WEBHOOK_URL =
+  "https://n8n.groupquimera.com/webhook-test/5a2f3445-76bb-4251-b1a2-556f698319fb";
 
-type PaymentStatus = Enums<'payment_status'>;
+type PaymentStatus = Enums<"payment_status">;
 
 interface PaymentStatusSelectProps {
   paymentId: string | null;
@@ -29,10 +24,10 @@ interface PaymentStatusSelectProps {
 }
 
 const statusConfig: Record<PaymentStatus, { label: string; style: string }> = {
-  pendiente: { label: 'Pendiente', style: 'bg-warning/10 text-warning border-warning/30' },
-  confirmado: { label: 'Confirmado', style: 'bg-success/10 text-success border-success/30' },
-  rechazado: { label: 'Rechazado', style: 'bg-destructive/10 text-destructive border-destructive/30' },
-  bajo_revision: { label: 'En Revisión', style: 'bg-chart-4/10 text-chart-4 border-chart-4/30' },
+  pendiente: { label: "Pendiente", style: "bg-warning/10 text-warning border-warning/30" },
+  confirmado: { label: "Confirmado", style: "bg-success/10 text-success border-success/30" },
+  rechazado: { label: "Rechazado", style: "bg-destructive/10 text-destructive border-destructive/30" },
+  bajo_revision: { label: "En Revisión", style: "bg-chart-4/10 text-chart-4 border-chart-4/30" },
 };
 
 export function PaymentStatusSelect({
@@ -60,14 +55,14 @@ export function PaymentStatusSelect({
       };
 
       // Add confirmation timestamp if confirming
-      if (newStatus === 'confirmado') {
+      if (newStatus === "confirmado") {
         updateData.confirmed_at = new Date().toISOString();
       }
 
       await updatePayment.mutateAsync(updateData as any);
 
       // Trigger n8n webhook for payment confirmation
-      if (newStatus === 'confirmado' && N8N_PAYMENT_WEBHOOK_URL) {
+      if (newStatus === "confirmado" && N8N_PAYMENT_WEBHOOK_URL) {
         await triggerWebhook(N8N_PAYMENT_WEBHOOK_URL, PAYMENT_EVENTS.CONFIRMED, {
           payment_id: paymentId,
           order_id: orderId,
@@ -79,11 +74,11 @@ export function PaymentStatusSelect({
         });
 
         // Trigger n8n webhook to send order confirmation message to client
-        await triggerWebhook(N8N_ORDER_CONFIRMED_WEBHOOK_URL, 'order.confirmed', {
+        await triggerWebhook(N8N_ORDER_CONFIRMED_WEBHOOK_URL, "order.confirmed", {
           customer_phone: customerPhone,
           customer_name: customerName,
           order_number: orderNumber,
-          message: `¡Hola ${customerName || ''}! Tu pedido ${orderNumber || ''} ha sido confirmado. ¡Gracias por tu compra! 🎉`,
+          message: `¡Hola ${customerName || ""}! Tu pedido ${orderNumber || ""} ha sido confirmado. ¡Gracias por tu compra! 🎉`,
         });
       }
     } finally {
@@ -110,7 +105,7 @@ export function PaymentStatusSelect({
       onValueChange={(value) => handleStatusChange(value as PaymentStatus)}
       disabled={disabled || isUpdating}
     >
-      <SelectTrigger 
+      <SelectTrigger
         className="w-[140px] h-8 border-0 bg-transparent p-0 focus:ring-0"
         onClick={(e) => e.stopPropagation()}
       >
