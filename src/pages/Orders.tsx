@@ -352,6 +352,7 @@ export default function Orders() {
                                       currentStatus={order.payment_status}
                                       orderId={order.id}
                                       orderNumber={order.order_number}
+                                      customerId={order.customer_id}
                                       customerName={order.customer_name}
                                       customerPhone={order.customer_phone}
                                       amount={order.payment_amount}

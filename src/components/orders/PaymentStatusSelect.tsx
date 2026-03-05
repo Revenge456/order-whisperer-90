@@ -17,6 +17,7 @@ interface PaymentStatusSelectProps {
   currentStatus: PaymentStatus | null;
   orderId: string | null;
   orderNumber: string | null;
+  customerId: string | null;
   customerName: string | null;
   customerPhone: string | null;
   amount: number | null;
@@ -36,6 +37,7 @@ export function PaymentStatusSelect({
   currentStatus,
   orderId,
   orderNumber,
+  customerId,
   customerName,
   customerPhone,
   amount,
@@ -77,6 +79,7 @@ export function PaymentStatusSelect({
 
         // Trigger n8n webhook to send order confirmation message to client
         await triggerWebhook(N8N_ORDER_CONFIRMED_WEBHOOK_URL, "order.confirmed", {
+          customer_id: customerId,
           customer_phone: customerPhone,
           customer_name: customerName,
           order_number: orderNumber,
