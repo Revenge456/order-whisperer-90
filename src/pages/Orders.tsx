@@ -355,6 +355,7 @@ export default function Orders() {
                                       customerName={order.customer_name}
                                       customerPhone={order.customer_phone}
                                       amount={order.payment_amount}
+                                      products={order.products as unknown[] | null}
                                     />
                                   </TableCell>
                                   <TableCell className="text-right">

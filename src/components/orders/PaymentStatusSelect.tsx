@@ -20,6 +20,7 @@ interface PaymentStatusSelectProps {
   customerName: string | null;
   customerPhone: string | null;
   amount: number | null;
+  products: unknown[] | null;
   disabled?: boolean;
 }
 
@@ -38,6 +39,7 @@ export function PaymentStatusSelect({
   customerName,
   customerPhone,
   amount,
+  products,
   disabled = false,
 }: PaymentStatusSelectProps) {
   const updatePayment = useUpdatePayment();
@@ -78,6 +80,8 @@ export function PaymentStatusSelect({
           customer_phone: customerPhone,
           customer_name: customerName,
           order_number: orderNumber,
+          amount: amount,
+          products: products,
           message: `¡Hola ${customerName || ""}! Tu pedido ${orderNumber || ""} ha sido confirmado. ¡Gracias por tu compra! 🎉`,
         });
       }
