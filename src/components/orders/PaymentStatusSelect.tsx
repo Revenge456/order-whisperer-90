@@ -13,6 +13,7 @@ import { useN8nWebhook, PAYMENT_EVENTS } from '@/hooks/useN8nWebhook';
 import type { Enums } from '@/integrations/supabase/types';
 
 const N8N_PAYMENT_WEBHOOK_URL = 'https://n8n.groupquimera.com/webhook/1eec3f11-5e72-41d2-8d27-516a55ba1b07';
+const N8N_ORDER_CONFIRMED_WEBHOOK_URL = 'https://n8n.groupquimera.com/webhook/5a2f3445-76bb-4251-b1a2-556f698319fb';
 
 type PaymentStatus = Enums<'payment_status'>;
 
@@ -75,6 +76,14 @@ export function PaymentStatusSelect({
           customer_phone: customerPhone,
           amount: amount,
           status: newStatus,
+        });
+
+        // Trigger n8n webhook to send order confirmation message to client
+        await triggerWebhook(N8N_ORDER_CONFIRMED_WEBHOOK_URL, 'order.confirmed', {
+          customer_phone: customerPhone,
+          customer_name: customerName,
+          order_number: orderNumber,
+          message: `¡Hola ${customerName || ''}! Tu pedido ${orderNumber || ''} ha sido confirmado. ¡Gracias por tu compra! 🎉`,
         });
       }
     } finally {

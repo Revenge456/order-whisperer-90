@@ -645,30 +645,6 @@ export type Database = {
           },
         ]
       }
-      sent_product_photo: {
-        Row: {
-          client_phone: string | null
-          created_at: string
-          id: number
-          message_id: string | null
-          product_name: string | null
-        }
-        Insert: {
-          client_phone?: string | null
-          created_at?: string
-          id?: number
-          message_id?: string | null
-          product_name?: string | null
-        }
-        Update: {
-          client_phone?: string | null
-          created_at?: string
-          id?: number
-          message_id?: string | null
-          product_name?: string | null
-        }
-        Relationships: []
-      }
       sent_product_photos: {
         Row: {
           client_phone: string | null
