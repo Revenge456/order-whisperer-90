@@ -7,7 +7,8 @@ import {
   BarChart3, 
   UsersRound,
   Dumbbell,
-  MessageSquare
+  MessageSquare,
+  Megaphone
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
