@@ -69,6 +69,11 @@ const App = () => (
               <ChatHistory />
             </ProtectedRoute>
           } />
+          <Route path="/broadcasts" element={
+            <ProtectedRoute pageKey="broadcasts">
+              <Broadcasts />
+            </ProtectedRoute>
+          } />
           
           {/* Redirect old routes */}
           <Route path="/payments" element={<Navigate to="/orders" replace />} />

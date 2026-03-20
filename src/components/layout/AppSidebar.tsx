@@ -37,6 +37,7 @@ const mainNavItems = [
 
 const secondaryNavItems = [
   { title: "Chats", url: "/chats", icon: MessageSquare, pageKey: "chats" },
+  { title: "Campañas", url: "/broadcasts", icon: Megaphone, pageKey: "broadcasts" },
   { title: "Reportes", url: "/reports", icon: BarChart3, pageKey: "reports" },
   { title: "Equipo", url: "/team", icon: UsersRound, pageKey: "team" },
 ];
