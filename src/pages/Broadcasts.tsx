@@ -384,7 +384,3 @@ function CampaignDetail({ campaign, onClose, onRefresh }: {
     </Dialog>
   );
 }
-
-function toast_error(msg: string) {
-  // Using sonner toast imported at hook level
-}
