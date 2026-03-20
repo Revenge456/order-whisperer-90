@@ -13,6 +13,7 @@ import Products from "./pages/Products";
 import Reports from "./pages/Reports";
 import Team from "./pages/Team";
 import ChatHistory from "./pages/ChatHistory";
+import Broadcasts from "./pages/Broadcasts";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -66,6 +67,11 @@ const App = () => (
           <Route path="/chats" element={
             <ProtectedRoute pageKey="chats">
               <ChatHistory />
+            </ProtectedRoute>
+          } />
+          <Route path="/broadcasts" element={
+            <ProtectedRoute pageKey="broadcasts">
+              <Broadcasts />
             </ProtectedRoute>
           } />
           
