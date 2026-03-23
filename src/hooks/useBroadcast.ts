@@ -21,6 +21,7 @@ export interface BroadcastContact {
   campaign_id: string;
   name: string | null;
   phone: string;
+  store: string | null;
   status: string;
   error_message: string | null;
   sent_at: string | null;
