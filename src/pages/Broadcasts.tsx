@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import { toast } from "sonner";
+import * as XLSX from "xlsx";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Plus, Upload, Send, Trash2, FileText, Image, File, Users, CheckCircle2, XCircle, Clock, Eye, X
+  Plus, Upload, Send, Trash2, FileText, Image, File, Users, CheckCircle2, XCircle, Clock, Eye, X, Info
 } from "lucide-react";
 import {
   useCampaigns, useCampaignContacts, useCampaignMedia,
@@ -21,6 +22,11 @@ import {
 } from "@/hooks/useBroadcast";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+
+const AVAILABLE_VARIABLES = [
+  { key: "{nombre}", desc: "Nombre del contacto" },
+  { key: "{telefono}", desc: "Teléfono del contacto" },
+];
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   draft: { label: "Borrador", variant: "secondary" },
