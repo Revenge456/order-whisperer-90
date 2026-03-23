@@ -26,6 +26,7 @@ import { es } from "date-fns/locale";
 const AVAILABLE_VARIABLES = [
   { key: "{nombre}", desc: "Nombre del contacto" },
   { key: "{telefono}", desc: "Teléfono del contacto" },
+  { key: "{tienda}", desc: "Tienda del contacto" },
 ];
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
