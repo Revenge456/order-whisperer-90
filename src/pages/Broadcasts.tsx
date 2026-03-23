@@ -372,7 +372,7 @@ function CampaignDetail({ campaign, onClose, onRefresh }: {
                 </div>
               ) : (
                 <Card className="py-6"><CardContent className="text-center text-sm text-muted-foreground">
-                  Importa un CSV con columnas "nombre" y "telefono"
+                  Importa un CSV o Excel (.xlsx) con columnas "nombre" y "telefono"
                 </CardContent></Card>
               )}
             </div>
