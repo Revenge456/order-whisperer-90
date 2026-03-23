@@ -350,17 +350,19 @@ function CampaignDetail({ campaign, onClose, onRefresh }: {
                   <ScrollArea className="max-h-60">
                     <Table>
                       <TableHeader>
-                        <TableRow>
-                          <TableHead>Nombre</TableHead>
-                          <TableHead>Teléfono</TableHead>
-                          <TableHead>Estado</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {contacts.map(c => (
-                          <TableRow key={c.id}>
-                            <TableCell className="text-sm">{c.name || "—"}</TableCell>
-                            <TableCell className="text-sm font-mono">{c.phone}</TableCell>
+                         <TableRow>
+                           <TableHead>Nombre</TableHead>
+                           <TableHead>Teléfono</TableHead>
+                           <TableHead>Tienda</TableHead>
+                           <TableHead>Estado</TableHead>
+                         </TableRow>
+                       </TableHeader>
+                       <TableBody>
+                         {contacts.map(c => (
+                           <TableRow key={c.id}>
+                             <TableCell className="text-sm">{c.name || "—"}</TableCell>
+                             <TableCell className="text-sm font-mono">{c.phone}</TableCell>
+                             <TableCell className="text-sm">{c.store || "—"}</TableCell>
                             <TableCell>
                               {c.status === "sent" && <Badge variant="outline" className="text-green-600"><CheckCircle2 className="w-3 h-3 mr-1" />Enviado</Badge>}
                               {c.status === "failed" && (
