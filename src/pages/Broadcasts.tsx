@@ -187,41 +187,53 @@ function CampaignDetail({ campaign, onClose, onRefresh }: {
   const mediaInputRef = useRef<HTMLInputElement>(null);
   const [webhookUrl, setWebhookUrl] = useState(campaign.webhook_url || "");
 
-  const handleCsvImport = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const parseContactsFromRows = useCallback((rows: string[][]) => {
+    if (rows.length < 2) { toast.error("Archivo vacío"); return; }
+    const header = rows[0].map(h => h.toLowerCase().trim());
+    const phoneIdx = header.findIndex(h => ["phone", "telefono", "teléfono", "número", "numero", "whatsapp", "celular"].includes(h));
+    const nameIdx = header.findIndex(h => ["name", "nombre", "cliente"].includes(h));
+    if (phoneIdx === -1) {
+      toast.error('Debe tener columna "phone", "telefono" o "numero"');
+      return;
+    }
+    const parsed: { name?: string; phone: string }[] = [];
+    for (let i = 1; i < rows.length; i++) {
+      const phone = rows[i][phoneIdx]?.toString().replace(/\s/g, '');
+      if (!phone) continue;
+      parsed.push({ phone, name: nameIdx >= 0 ? rows[i][nameIdx]?.toString() : undefined });
+    }
+    if (!parsed.length) { toast.error("No se encontraron contactos válidos"); return; }
+    importContacts.mutate({ campaignId: campaign.id, contacts: parsed });
+  }, [campaign.id, importContacts]);
+
+  const handleFileImport = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const ext = file.name.split('.').pop()?.toLowerCase();
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const text = event.target?.result as string;
-      const lines = text.split("\n").filter(l => l.trim());
-      if (lines.length < 2) { toast.error("CSV vacío"); return; }
-
-      // Parse header
-      const header = lines[0].toLowerCase().split(",").map(h => h.trim().replace(/"/g, ''));
-      const phoneIdx = header.findIndex(h => ["phone", "telefono", "teléfono", "número", "numero", "whatsapp", "celular"].includes(h));
-      const nameIdx = header.findIndex(h => ["name", "nombre", "cliente"].includes(h));
-
-      if (phoneIdx === -1) {
-        toast.error('CSV debe tener columna "phone", "telefono" o "numero"');
-        return;
-      }
-
-      const parsed: { name?: string; phone: string }[] = [];
-      for (let i = 1; i < lines.length; i++) {
-        const cols = lines[i].split(",").map(c => c.trim().replace(/"/g, ''));
-        const phone = cols[phoneIdx]?.replace(/\s/g, '');
-        if (!phone) continue;
-        parsed.push({ phone, name: nameIdx >= 0 ? cols[nameIdx] : undefined });
-      }
-
-      if (!parsed.length) { toast.error("No se encontraron contactos válidos"); return; }
-
-      importContacts.mutate({ campaignId: campaign.id, contacts: parsed });
-    };
-    reader.readAsText(file);
+    if (ext === 'csv') {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const text = event.target?.result as string;
+        const rows = text.split("\n").filter(l => l.trim()).map(l => l.split(",").map(c => c.trim().replace(/"/g, '')));
+        parseContactsFromRows(rows);
+      };
+      reader.readAsText(file);
+    } else if (ext === 'xlsx' || ext === 'xls') {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const data = new Uint8Array(event.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: "array" });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows: string[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+        parseContactsFromRows(rows);
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      toast.error("Formato no soportado. Usa CSV o Excel (.xlsx)");
+    }
     e.target.value = "";
-  }, [campaign.id, importContacts]);
+  }, [parseContactsFromRows]);
 
   const handleMediaUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
