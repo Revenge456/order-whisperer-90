@@ -146,7 +146,24 @@ function CreateCampaignForm({ onCreated }: { onCreated: () => void }) {
       </div>
       <div>
         <label className="text-sm font-medium">Mensaje</label>
-        <Textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Escribe el mensaje que se enviará a todos los contactos..." rows={4} />
+        <Textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Hola {nombre}, te escribimos para..." rows={4} />
+        <div className="mt-2 p-2 bg-muted/50 rounded-md">
+          <p className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1">
+            <Info className="w-3 h-3" /> Variables disponibles (se reemplazan por contacto):
+          </p>
+          <div className="flex flex-wrap gap-1">
+            {AVAILABLE_VARIABLES.map(v => (
+              <button
+                key={v.key}
+                type="button"
+                className="text-xs px-2 py-0.5 rounded bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                onClick={() => setMessage(prev => prev + v.key)}
+              >
+                {v.key} <span className="text-muted-foreground">— {v.desc}</span>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
       <Button onClick={handleSubmit} disabled={!name.trim() || createCampaign.isPending} className="w-full">
         {createCampaign.isPending ? "Creando..." : "Crear Campaña"}
