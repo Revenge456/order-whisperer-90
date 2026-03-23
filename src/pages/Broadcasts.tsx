@@ -333,9 +333,9 @@ function CampaignDetail({ campaign, onClose, onRefresh }: {
                 {isDraft && (
                   <>
                     <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()}>
-                      <Upload className="w-4 h-4 mr-1" />Importar CSV
+                      <Upload className="w-4 h-4 mr-1" />Importar CSV/Excel
                     </Button>
-                    <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleCsvImport} />
+                    <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleFileImport} />
                   </>
                 )}
               </div>
