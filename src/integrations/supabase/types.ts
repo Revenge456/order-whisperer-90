@@ -173,6 +173,7 @@ export type Database = {
           phone: string
           sent_at: string | null
           status: string
+          store: string | null
         }
         Insert: {
           campaign_id: string
@@ -183,6 +184,7 @@ export type Database = {
           phone: string
           sent_at?: string | null
           status?: string
+          store?: string | null
         }
         Update: {
           campaign_id?: string
@@ -193,6 +195,7 @@ export type Database = {
           phone?: string
           sent_at?: string | null
           status?: string
+          store?: string | null
         }
         Relationships: [
           {

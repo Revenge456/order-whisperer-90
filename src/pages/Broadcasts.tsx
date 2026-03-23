@@ -26,6 +26,7 @@ import { es } from "date-fns/locale";
 const AVAILABLE_VARIABLES = [
   { key: "{nombre}", desc: "Nombre del contacto" },
   { key: "{telefono}", desc: "Teléfono del contacto" },
+  { key: "{tienda}", desc: "Tienda del contacto" },
 ];
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -192,15 +193,20 @@ function CampaignDetail({ campaign, onClose, onRefresh }: {
     const header = rows[0].map(h => h.toLowerCase().trim());
     const phoneIdx = header.findIndex(h => ["phone", "telefono", "teléfono", "número", "numero", "whatsapp", "celular"].includes(h));
     const nameIdx = header.findIndex(h => ["name", "nombre", "cliente"].includes(h));
+    const storeIdx = header.findIndex(h => ["store", "tienda", "sucursal", "local"].includes(h));
     if (phoneIdx === -1) {
       toast.error('Debe tener columna "phone", "telefono" o "numero"');
       return;
     }
-    const parsed: { name?: string; phone: string }[] = [];
+    const parsed: { name?: string; phone: string; store?: string }[] = [];
     for (let i = 1; i < rows.length; i++) {
       const phone = rows[i][phoneIdx]?.toString().replace(/\s/g, '');
       if (!phone) continue;
-      parsed.push({ phone, name: nameIdx >= 0 ? rows[i][nameIdx]?.toString() : undefined });
+      parsed.push({
+        phone,
+        name: nameIdx >= 0 ? rows[i][nameIdx]?.toString() : undefined,
+        store: storeIdx >= 0 ? rows[i][storeIdx]?.toString() : undefined,
+      });
     }
     if (!parsed.length) { toast.error("No se encontraron contactos válidos"); return; }
     importContacts.mutate({ campaignId: campaign.id, contacts: parsed });
@@ -344,17 +350,19 @@ function CampaignDetail({ campaign, onClose, onRefresh }: {
                   <ScrollArea className="max-h-60">
                     <Table>
                       <TableHeader>
-                        <TableRow>
-                          <TableHead>Nombre</TableHead>
-                          <TableHead>Teléfono</TableHead>
-                          <TableHead>Estado</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {contacts.map(c => (
-                          <TableRow key={c.id}>
-                            <TableCell className="text-sm">{c.name || "—"}</TableCell>
-                            <TableCell className="text-sm font-mono">{c.phone}</TableCell>
+                         <TableRow>
+                           <TableHead>Nombre</TableHead>
+                           <TableHead>Teléfono</TableHead>
+                           <TableHead>Tienda</TableHead>
+                           <TableHead>Estado</TableHead>
+                         </TableRow>
+                       </TableHeader>
+                       <TableBody>
+                         {contacts.map(c => (
+                           <TableRow key={c.id}>
+                             <TableCell className="text-sm">{c.name || "—"}</TableCell>
+                             <TableCell className="text-sm font-mono">{c.phone}</TableCell>
+                             <TableCell className="text-sm">{c.store || "—"}</TableCell>
                             <TableCell>
                               {c.status === "sent" && <Badge variant="outline" className="text-green-600"><CheckCircle2 className="w-3 h-3 mr-1" />Enviado</Badge>}
                               {c.status === "failed" && (

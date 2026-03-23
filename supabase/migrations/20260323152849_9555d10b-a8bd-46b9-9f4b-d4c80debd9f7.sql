@@ -1,0 +1,1 @@
+ALTER TABLE public.broadcast_contacts ADD COLUMN store character varying DEFAULT NULL;

@@ -21,6 +21,7 @@ export interface BroadcastContact {
   campaign_id: string;
   name: string | null;
   phone: string;
+  store: string | null;
   status: string;
   error_message: string | null;
   sent_at: string | null;
@@ -105,11 +106,12 @@ export function useCreateCampaign() {
 export function useImportContacts() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ campaignId, contacts }: { campaignId: string; contacts: { name?: string; phone: string }[] }) => {
+    mutationFn: async ({ campaignId, contacts }: { campaignId: string; contacts: { name?: string; phone: string; store?: string }[] }) => {
       const rows = contacts.map(c => ({
         campaign_id: campaignId,
         name: c.name || null,
         phone: c.phone,
+        store: c.store || null,
       }));
       const { error } = await supabase.from('broadcast_contacts').insert(rows);
       if (error) throw error;
