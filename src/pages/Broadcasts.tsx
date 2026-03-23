@@ -193,15 +193,20 @@ function CampaignDetail({ campaign, onClose, onRefresh }: {
     const header = rows[0].map(h => h.toLowerCase().trim());
     const phoneIdx = header.findIndex(h => ["phone", "telefono", "teléfono", "número", "numero", "whatsapp", "celular"].includes(h));
     const nameIdx = header.findIndex(h => ["name", "nombre", "cliente"].includes(h));
+    const storeIdx = header.findIndex(h => ["store", "tienda", "sucursal", "local"].includes(h));
     if (phoneIdx === -1) {
       toast.error('Debe tener columna "phone", "telefono" o "numero"');
       return;
     }
-    const parsed: { name?: string; phone: string }[] = [];
+    const parsed: { name?: string; phone: string; store?: string }[] = [];
     for (let i = 1; i < rows.length; i++) {
       const phone = rows[i][phoneIdx]?.toString().replace(/\s/g, '');
       if (!phone) continue;
-      parsed.push({ phone, name: nameIdx >= 0 ? rows[i][nameIdx]?.toString() : undefined });
+      parsed.push({
+        phone,
+        name: nameIdx >= 0 ? rows[i][nameIdx]?.toString() : undefined,
+        store: storeIdx >= 0 ? rows[i][storeIdx]?.toString() : undefined,
+      });
     }
     if (!parsed.length) { toast.error("No se encontraron contactos válidos"); return; }
     importContacts.mutate({ campaignId: campaign.id, contacts: parsed });
