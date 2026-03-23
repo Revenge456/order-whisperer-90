@@ -346,8 +346,7 @@ function CampaignDetail({ campaign, onClose, onRefresh }: {
                 )}
               </div>
               {contactsLoading ? <Skeleton className="h-32" /> : contacts?.length ? (
-                <div className="border rounded-lg overflow-hidden">
-                  <ScrollArea className="max-h-60">
+                <div className="border rounded-lg overflow-hidden max-h-72 overflow-y-auto">
                     <Table>
                       <TableHeader>
                          <TableRow>
@@ -376,7 +375,6 @@ function CampaignDetail({ campaign, onClose, onRefresh }: {
                         ))}
                       </TableBody>
                     </Table>
-                  </ScrollArea>
                 </div>
               ) : (
                 <Card className="py-6"><CardContent className="text-center text-sm text-muted-foreground">
