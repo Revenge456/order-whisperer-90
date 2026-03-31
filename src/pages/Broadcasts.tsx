@@ -129,7 +129,7 @@ function CampaignCard({ campaign: c, onSelect }: { campaign: BroadcastCampaign; 
   );
 }
 
-const DEFAULT_WEBHOOK_URL = "https://n8n.groupquimera.com/webhook/broadcast-campaign";
+const DEFAULT_WEBHOOK_URL = "https://n8n.groupquimera.com/webhook-test/broadcast-campaign";
 
 function CreateCampaignForm({ onCreated }: { onCreated: () => void }) {
   const [name, setName] = useState("");
