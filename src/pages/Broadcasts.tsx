@@ -359,12 +359,6 @@ function CreateCampaignForm({ onCreated }: { onCreated: () => void }) {
   );
 }
 
-      <Button onClick={handleSubmit} disabled={!name.trim() || isSubmitting} className="w-full">
-        {isSubmitting ? "Creando..." : "Crear Campaña"}
-      </Button>
-    </div>
-  );
-}
 
 function CampaignDetail({ campaign, onClose, onRefresh }: {
   campaign: BroadcastCampaign;
