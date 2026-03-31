@@ -13,12 +13,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Plus, Upload, Send, Trash2, FileText, Image, File, Users, CheckCircle2, XCircle, Clock, Eye, X, Info
+  Plus, Upload, Send, Trash2, FileText, Users, CheckCircle2, XCircle, Clock, X, Info
 } from "lucide-react";
 import {
-  useCampaigns, useCampaignContacts, useCampaignMedia,
-  useCreateCampaign, useImportContacts, useUploadBroadcastMedia,
-  useDeleteBroadcastMedia, useSendCampaign, useDeleteCampaign,
+  useCampaigns, useCampaignContacts,
+  useCreateCampaign, useImportContacts, useDeleteCampaign,
   type BroadcastCampaign,
 } from "@/hooks/useBroadcast";
 import { format } from "date-fns";
@@ -31,12 +30,13 @@ const AVAILABLE_VARIABLES = [
 ];
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  draft: { label: "Borrador", variant: "secondary" },
+  pending: { label: "Pendiente", variant: "secondary" },
   sending: { label: "Enviando", variant: "default" },
   completed: { label: "Completada", variant: "outline" },
   failed: { label: "Fallida", variant: "destructive" },
-  cancelled: { label: "Cancelada", variant: "destructive" },
 };
+
+const DEFAULT_WEBHOOK_URL = "https://n8n.groupquimera.com/webhook-test/broadcast-campaign";
 
 export default function Broadcasts() {
   const { data: campaigns, isLoading } = useCampaigns();
@@ -86,7 +86,6 @@ export default function Broadcasts() {
           <CampaignDetail
             campaign={selectedCampaign}
             onClose={() => setSelectedCampaign(null)}
-            onRefresh={(updated) => setSelectedCampaign(updated)}
           />
         )}
       </div>
@@ -96,13 +95,13 @@ export default function Broadcasts() {
 
 function CampaignCard({ campaign: c, onSelect }: { campaign: BroadcastCampaign; onSelect: () => void }) {
   const deleteCampaign = useDeleteCampaign();
-  const status = statusConfig[c.status] || statusConfig.draft;
+  const status = statusConfig[c.status] || statusConfig.pending;
 
   return (
     <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={onSelect}>
       <CardHeader className="pb-2 flex flex-row items-start justify-between">
         <div className="space-y-1 min-w-0 flex-1">
-          <CardTitle className="text-base truncate">{c.name}</CardTitle>
+          <CardTitle className="text-base truncate">{c.campaign_name}</CardTitle>
           <p className="text-xs text-muted-foreground">
             {format(new Date(c.created_at), "dd MMM yyyy HH:mm", { locale: es })}
           </p>
@@ -110,11 +109,17 @@ function CampaignCard({ campaign: c, onSelect }: { campaign: BroadcastCampaign; 
         <Badge variant={status.variant}>{status.label}</Badge>
       </CardHeader>
       <CardContent>
-        <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{c.message || "Sin mensaje"}</p>
+        <div className="flex items-center gap-2 mb-2">
+          <Badge variant="outline" className="text-xs">
+            {c.content_type === "pdf" ? "📄 PDF" : "💬 Texto"}
+          </Badge>
+        </div>
+        <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+          {c.content_type === "text" ? (c.message || "Sin mensaje") : (c.pdf_name || "PDF")}
+        </p>
         <div className="flex items-center gap-4 text-xs text-muted-foreground">
           <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" />{c.total_contacts}</span>
           <span className="flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5 text-green-500" />{c.sent_count}</span>
-          <span className="flex items-center gap-1"><XCircle className="w-3.5 h-3.5 text-red-500" />{c.failed_count}</span>
         </div>
         <div className="flex justify-end mt-2">
           <Button
@@ -129,8 +134,6 @@ function CampaignCard({ campaign: c, onSelect }: { campaign: BroadcastCampaign; 
   );
 }
 
-const DEFAULT_WEBHOOK_URL = "https://n8n.groupquimera.com/webhook-test/broadcast-campaign";
-
 function CreateCampaignForm({ onCreated }: { onCreated: () => void }) {
   const [name, setName] = useState("");
   const [contentType, setContentType] = useState<"text" | "pdf">("text");
@@ -138,10 +141,8 @@ function CreateCampaignForm({ onCreated }: { onCreated: () => void }) {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [contactsFile, setContactsFile] = useState<File | null>(null);
   const [parsedContacts, setParsedContacts] = useState<{ name?: string; phone: string; store?: string }[]>([]);
-  const [webhookUrl, setWebhookUrl] = useState(DEFAULT_WEBHOOK_URL);
   const createCampaign = useCreateCampaign();
   const importContacts = useImportContacts();
-  const uploadMedia = useUploadBroadcastMedia();
   const contactsInputRef = useRef<HTMLInputElement>(null);
   const pdfInputRef = useRef<HTMLInputElement>(null);
 
@@ -213,10 +214,6 @@ function CreateCampaignForm({ onCreated }: { onCreated: () => void }) {
 
   const handleSubmit = async () => {
     if (!name.trim()) return;
-    if (!webhookUrl.trim()) {
-      toast.error("Ingresa la URL del webhook");
-      return;
-    }
     if (contentType === "text" && !message.trim()) {
       toast.error("Escribe un mensaje");
       return;
@@ -231,20 +228,11 @@ function CreateCampaignForm({ onCreated }: { onCreated: () => void }) {
     }
 
     try {
-      // 1. Create campaign in DB
-      const campaign = await createCampaign.mutateAsync({
-        name: name.trim(),
-        message: contentType === "text" ? message.trim() : `[PDF] ${pdfFile!.name}`,
-        webhook_url: webhookUrl.trim(),
-      });
-
-      // 2. Import contacts to DB
-      await importContacts.mutateAsync({ campaignId: campaign.id, contacts: parsedContacts });
-
-      // 3. Upload PDF if applicable
+      // 1. Upload PDF if applicable
       let pdfUrl: string | null = null;
+      let pdfName: string | null = null;
       if (contentType === "pdf" && pdfFile) {
-        const filePath = `${campaign.id}/${Date.now()}_${pdfFile.name}`;
+        const filePath = `broadcasts/${Date.now()}_${pdfFile.name}`;
         const { error: uploadError } = await supabase.storage
           .from('broadcast-media')
           .upload(filePath, pdfFile);
@@ -254,20 +242,25 @@ function CreateCampaignForm({ onCreated }: { onCreated: () => void }) {
           .from('broadcast-media')
           .getPublicUrl(filePath);
         pdfUrl = urlData.publicUrl;
-
-        await supabase.from('broadcast_media').insert({
-          campaign_id: campaign.id,
-          file_name: pdfFile.name,
-          file_url: pdfUrl,
-          file_type: pdfFile.type,
-          file_size: pdfFile.size,
-        });
+        pdfName = pdfFile.name;
       }
+
+      // 2. Create campaign in DB
+      const campaign = await createCampaign.mutateAsync({
+        campaign_name: name.trim(),
+        content_type: contentType,
+        message: contentType === "text" ? message.trim() : undefined,
+        pdf_url: pdfUrl || undefined,
+        pdf_name: pdfName || undefined,
+      });
+
+      // 3. Import contacts to DB
+      await importContacts.mutateAsync({ campaignId: campaign.id, contacts: parsedContacts });
 
       // 4. Update campaign status to sending
       await supabase
         .from('broadcast_campaigns')
-        .update({ status: 'sending', started_at: new Date().toISOString() })
+        .update({ status: 'sending' })
         .eq('id', campaign.id);
 
       // 5. Trigger n8n webhook with ALL data
@@ -277,7 +270,7 @@ function CreateCampaignForm({ onCreated }: { onCreated: () => void }) {
         content_type: contentType,
         message: contentType === "text" ? message.trim() : null,
         pdf_url: pdfUrl,
-        pdf_name: contentType === "pdf" ? pdfFile!.name : null,
+        pdf_name: pdfName,
         contacts: parsedContacts.map(c => ({
           phone: c.phone,
           name: c.name || null,
@@ -286,7 +279,7 @@ function CreateCampaignForm({ onCreated }: { onCreated: () => void }) {
         total_contacts: parsedContacts.length,
       };
 
-      await fetch(webhookUrl.trim(), {
+      await fetch(DEFAULT_WEBHOOK_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         mode: 'no-cors',
@@ -415,7 +408,6 @@ function CreateCampaignForm({ onCreated }: { onCreated: () => void }) {
         )}
       </div>
 
-
       <Button onClick={handleSubmit} disabled={!name.trim() || isSubmitting} className="w-full">
         {isSubmitting ? "Creando y enviando..." : "Crear Campaña y Enviar"}
       </Button>
@@ -423,253 +415,99 @@ function CreateCampaignForm({ onCreated }: { onCreated: () => void }) {
   );
 }
 
-
-function CampaignDetail({ campaign, onClose, onRefresh }: {
+function CampaignDetail({ campaign, onClose }: {
   campaign: BroadcastCampaign;
   onClose: () => void;
-  onRefresh: (c: BroadcastCampaign) => void;
 }) {
   const { data: contacts, isLoading: contactsLoading } = useCampaignContacts(campaign.id);
-  const { data: media, isLoading: mediaLoading } = useCampaignMedia(campaign.id);
-  const importContacts = useImportContacts();
-  const uploadMedia = useUploadBroadcastMedia();
-  const deleteMedia = useDeleteBroadcastMedia();
-  const sendCampaign = useSendCampaign();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const mediaInputRef = useRef<HTMLInputElement>(null);
-  const [webhookUrl, setWebhookUrl] = useState(campaign.webhook_url || "");
-
-  const parseContactsFromRows = useCallback((rows: string[][]) => {
-    if (rows.length < 2) { toast.error("Archivo vacío"); return; }
-    const header = rows[0].map(h => h.toLowerCase().trim());
-    const phoneIdx = header.findIndex(h => ["phone", "telefono", "teléfono", "número", "numero", "whatsapp", "celular"].includes(h));
-    const nameIdx = header.findIndex(h => ["name", "nombre", "cliente"].includes(h));
-    const storeIdx = header.findIndex(h => ["store", "tienda", "sucursal", "local"].includes(h));
-    if (phoneIdx === -1) {
-      toast.error('Debe tener columna "phone", "telefono" o "numero"');
-      return;
-    }
-    const parsed: { name?: string; phone: string; store?: string }[] = [];
-    for (let i = 1; i < rows.length; i++) {
-      const phone = rows[i][phoneIdx]?.toString().replace(/\s/g, '');
-      if (!phone) continue;
-      parsed.push({
-        phone,
-        name: nameIdx >= 0 ? rows[i][nameIdx]?.toString() : undefined,
-        store: storeIdx >= 0 ? rows[i][storeIdx]?.toString() : undefined,
-      });
-    }
-    if (!parsed.length) { toast.error("No se encontraron contactos válidos"); return; }
-    importContacts.mutate({ campaignId: campaign.id, contacts: parsed });
-  }, [campaign.id, importContacts]);
-
-  const handleFileImport = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const ext = file.name.split('.').pop()?.toLowerCase();
-
-    if (ext === 'csv') {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const text = event.target?.result as string;
-        const rows = text.split("\n").filter(l => l.trim()).map(l => l.split(",").map(c => c.trim().replace(/"/g, '')));
-        parseContactsFromRows(rows);
-      };
-      reader.readAsText(file);
-    } else if (ext === 'xlsx' || ext === 'xls') {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const data = new Uint8Array(event.target?.result as ArrayBuffer);
-        const workbook = XLSX.read(data, { type: "array" });
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const rows: string[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-        parseContactsFromRows(rows);
-      };
-      reader.readAsArrayBuffer(file);
-    } else {
-      toast.error("Formato no soportado. Usa CSV o Excel (.xlsx)");
-    }
-    e.target.value = "";
-  }, [parseContactsFromRows]);
-
-  const handleMediaUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
-    Array.from(files).forEach(file => {
-      uploadMedia.mutate({ campaignId: campaign.id, file });
-    });
-    e.target.value = "";
-  }, [campaign.id, uploadMedia]);
-
-  const handleSend = async () => {
-    if (!webhookUrl.trim()) {
-      toast.error("Ingresa la URL del webhook de n8n");
-      return;
-    }
-    if (!contacts?.length) {
-      toast.error("Importa contactos primero");
-      return;
-    }
-    await sendCampaign.mutateAsync({ campaignId: campaign.id, webhookUrl: webhookUrl.trim() });
-  };
-
-  const isDraft = campaign.status === "draft";
-
-  const getFileIcon = (type: string) => {
-    if (type.startsWith("image/")) return <Image className="w-4 h-4" />;
-    if (type.includes("pdf")) return <FileText className="w-4 h-4" />;
-    return <File className="w-4 h-4" />;
-  };
 
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            {campaign.name}
+            {campaign.campaign_name}
             <Badge variant={statusConfig[campaign.status]?.variant || "secondary"}>
               {statusConfig[campaign.status]?.label || campaign.status}
+            </Badge>
+            <Badge variant="outline" className="text-xs">
+              {campaign.content_type === "pdf" ? "📄 PDF" : "💬 Texto"}
             </Badge>
           </DialogTitle>
         </DialogHeader>
 
         <ScrollArea className="flex-1 pr-4">
           <div className="space-y-6">
-            {/* Message */}
+            {/* Content */}
             <div>
-              <label className="text-sm font-medium">Mensaje</label>
+              <label className="text-sm font-medium">
+                {campaign.content_type === "text" ? "Mensaje" : "Documento PDF"}
+              </label>
               <div className="mt-1 p-3 bg-muted/50 rounded-lg text-sm whitespace-pre-wrap">
-                {campaign.message || "Sin mensaje"}
-              </div>
-            </div>
-
-            {/* Media */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-medium">Archivos adjuntos ({media?.length || 0})</label>
-                {isDraft && (
-                  <>
-                    <Button size="sm" variant="outline" onClick={() => mediaInputRef.current?.click()}>
-                      <Upload className="w-4 h-4 mr-1" />Subir
-                    </Button>
-                    <input ref={mediaInputRef} type="file" multiple accept="image/*,.pdf,.doc,.docx" className="hidden" onChange={handleMediaUpload} />
-                  </>
-                )}
-              </div>
-              {mediaLoading ? <Skeleton className="h-16" /> : media?.length ? (
-                <div className="space-y-2">
-                  {media.map(m => (
-                    <div key={m.id} className="flex items-center justify-between p-2 bg-muted/30 rounded-lg">
-                      <div className="flex items-center gap-2 min-w-0">
-                        {getFileIcon(m.file_type)}
-                        <span className="text-sm truncate">{m.file_name}</span>
-                        <span className="text-xs text-muted-foreground">{m.file_size ? `${(m.file_size / 1024).toFixed(0)}KB` : ''}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Button size="sm" variant="ghost" asChild>
-                          <a href={m.file_url} target="_blank" rel="noreferrer"><Eye className="w-4 h-4" /></a>
-                        </Button>
-                        {isDraft && (
-                          <Button size="sm" variant="ghost" onClick={() => deleteMedia.mutate({ mediaId: m.id, campaignId: campaign.id })}>
-                            <X className="w-4 h-4 text-destructive" />
-                          </Button>
-                        )}
-                      </div>
+                {campaign.content_type === "text"
+                  ? (campaign.message || "Sin mensaje")
+                  : (
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-4 h-4" />
+                      <span>{campaign.pdf_name || "PDF"}</span>
+                      {campaign.pdf_url && (
+                        <a href={campaign.pdf_url} target="_blank" rel="noreferrer" className="text-primary underline text-xs">
+                          Ver PDF
+                        </a>
+                      )}
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">Sin archivos adjuntos</p>
-              )}
+                  )}
+              </div>
             </div>
 
             {/* Contacts */}
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-medium">Contactos ({contacts?.length || 0})</label>
-                {isDraft && (
-                  <>
-                    <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()}>
-                      <Upload className="w-4 h-4 mr-1" />Importar CSV/Excel
-                    </Button>
-                    <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleFileImport} />
-                  </>
-                )}
-              </div>
-              {contactsLoading ? <Skeleton className="h-32" /> : contacts?.length ? (
-                <div className="border rounded-lg overflow-hidden max-h-72 overflow-y-auto">
-                    <Table>
-                      <TableHeader>
-                         <TableRow>
-                           <TableHead>Nombre</TableHead>
-                           <TableHead>Teléfono</TableHead>
-                           <TableHead>Tienda</TableHead>
-                           <TableHead>Estado</TableHead>
-                         </TableRow>
-                       </TableHeader>
-                       <TableBody>
-                         {contacts.map(c => (
-                           <TableRow key={c.id}>
-                             <TableCell className="text-sm">{c.name || "—"}</TableCell>
-                             <TableCell className="text-sm font-mono">{c.phone}</TableCell>
-                             <TableCell className="text-sm">{c.store || "—"}</TableCell>
-                            <TableCell>
-                              {c.status === "sent" && <Badge variant="outline" className="text-green-600"><CheckCircle2 className="w-3 h-3 mr-1" />Enviado</Badge>}
-                              {c.status === "failed" && (
-                                <Badge variant="destructive" title={c.error_message || ''}>
-                                  <XCircle className="w-3 h-3 mr-1" />Fallido
-                                </Badge>
-                              )}
-                              {c.status === "pending" && <Badge variant="secondary"><Clock className="w-3 h-3 mr-1" />Pendiente</Badge>}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+              <label className="text-sm font-medium">Contactos ({contacts?.length || 0})</label>
+              {contactsLoading ? <Skeleton className="h-32 mt-2" /> : contacts?.length ? (
+                <div className="border rounded-lg overflow-hidden max-h-72 overflow-y-auto mt-2">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Nombre</TableHead>
+                        <TableHead>Teléfono</TableHead>
+                        <TableHead>Tienda</TableHead>
+                        <TableHead>Estado</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {contacts.map(c => (
+                        <TableRow key={c.id}>
+                          <TableCell className="text-sm">{c.name || "—"}</TableCell>
+                          <TableCell className="text-sm font-mono">{c.phone}</TableCell>
+                          <TableCell className="text-sm">{c.store || "—"}</TableCell>
+                          <TableCell>
+                            {c.status === "sent" && <Badge variant="outline" className="text-green-600"><CheckCircle2 className="w-3 h-3 mr-1" />Enviado</Badge>}
+                            {c.status === "failed" && <Badge variant="destructive"><XCircle className="w-3 h-3 mr-1" />Fallido</Badge>}
+                            {c.status === "pending" && <Badge variant="secondary"><Clock className="w-3 h-3 mr-1" />Pendiente</Badge>}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </div>
               ) : (
-                <Card className="py-6"><CardContent className="text-center text-sm text-muted-foreground">
-                  Importa un CSV o Excel (.xlsx) con columnas "nombre" y "telefono"
+                <Card className="py-6 mt-2"><CardContent className="text-center text-sm text-muted-foreground">
+                  Sin contactos
                 </CardContent></Card>
               )}
             </div>
 
-            {/* Webhook & Send */}
-            {isDraft && (
-              <div className="space-y-3 border-t pt-4">
-                <div>
-                  <label className="text-sm font-medium">URL del Webhook n8n</label>
-                  <Input
-                    value={webhookUrl}
-                    onChange={(e) => setWebhookUrl(e.target.value)}
-                    placeholder="https://n8n.tudominio.com/webhook/..."
-                    className="mt-1"
-                  />
-                </div>
-                <Button onClick={handleSend} disabled={sendCampaign.isPending} className="w-full">
-                  <Send className="w-4 h-4 mr-2" />
-                  {sendCampaign.isPending ? "Enviando..." : "Enviar Campaña"}
-                </Button>
+            {/* Stats */}
+            <div className="grid grid-cols-2 gap-4 border-t pt-4">
+              <div className="text-center">
+                <p className="text-2xl font-bold">{campaign.total_contacts}</p>
+                <p className="text-xs text-muted-foreground">Total</p>
               </div>
-            )}
-
-            {/* Stats for non-draft */}
-            {!isDraft && (
-              <div className="grid grid-cols-3 gap-4 border-t pt-4">
-                <div className="text-center">
-                  <p className="text-2xl font-bold">{campaign.total_contacts}</p>
-                  <p className="text-xs text-muted-foreground">Total</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-green-600">{campaign.sent_count}</p>
-                  <p className="text-xs text-muted-foreground">Enviados</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-red-600">{campaign.failed_count}</p>
-                  <p className="text-xs text-muted-foreground">Fallidos</p>
-                </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-green-600">{campaign.sent_count}</p>
+                <p className="text-xs text-muted-foreground">Enviados</p>
               </div>
-            )}
+            </div>
           </div>
         </ScrollArea>
       </DialogContent>
