@@ -130,15 +130,16 @@ function CampaignCard({ campaign: c, onSelect }: { campaign: BroadcastCampaign; 
 
 function CreateCampaignForm({ onCreated }: { onCreated: () => void }) {
   const [name, setName] = useState("");
+  const [contentType, setContentType] = useState<"text" | "pdf">("text");
   const [message, setMessage] = useState("");
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [contactsFile, setContactsFile] = useState<File | null>(null);
   const [parsedContacts, setParsedContacts] = useState<{ name?: string; phone: string; store?: string }[]>([]);
-  const [mediaFiles, setMediaFiles] = useState<File[]>([]);
   const createCampaign = useCreateCampaign();
   const importContacts = useImportContacts();
   const uploadMedia = useUploadBroadcastMedia();
   const contactsInputRef = useRef<HTMLInputElement>(null);
-  const mediaInputRef = useRef<HTMLInputElement>(null);
+  const pdfInputRef = useRef<HTMLInputElement>(null);
 
   const handleContactsFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -195,28 +196,39 @@ function CreateCampaignForm({ onCreated }: { onCreated: () => void }) {
     e.target.value = "";
   }, []);
 
-  const handleMediaFiles = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
-    setMediaFiles(prev => [...prev, ...Array.from(files)]);
+  const handlePdfFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.includes("pdf")) {
+      toast.error("Solo se permiten archivos PDF");
+      return;
+    }
+    setPdfFile(file);
     e.target.value = "";
   }, []);
 
-  const removeMediaFile = (index: number) => {
-    setMediaFiles(prev => prev.filter((_, i) => i !== index));
-  };
-
   const handleSubmit = async () => {
     if (!name.trim()) return;
+    if (contentType === "text" && !message.trim()) {
+      toast.error("Escribe un mensaje");
+      return;
+    }
+    if (contentType === "pdf" && !pdfFile) {
+      toast.error("Sube un archivo PDF");
+      return;
+    }
     try {
-      const campaign = await createCampaign.mutateAsync({ name: name.trim(), message: message.trim() });
+      const campaign = await createCampaign.mutateAsync({
+        name: name.trim(),
+        message: contentType === "text" ? message.trim() : `[PDF] ${pdfFile!.name}`,
+      });
 
       if (parsedContacts.length) {
         await importContacts.mutateAsync({ campaignId: campaign.id, contacts: parsedContacts });
       }
 
-      for (const file of mediaFiles) {
-        await uploadMedia.mutateAsync({ campaignId: campaign.id, file });
+      if (contentType === "pdf" && pdfFile) {
+        await uploadMedia.mutateAsync({ campaignId: campaign.id, file: pdfFile });
       }
 
       onCreated();
@@ -233,27 +245,88 @@ function CreateCampaignForm({ onCreated }: { onCreated: () => void }) {
         <label className="text-sm font-medium">Nombre de la campaña</label>
         <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej: Promo Marzo 2026" />
       </div>
+
+      {/* Content Type Toggle */}
       <div>
-        <label className="text-sm font-medium">Mensaje</label>
-        <Textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Hola {nombre}, te escribimos para..." rows={4} />
-        <div className="mt-2 p-2 bg-muted/50 rounded-md">
-          <p className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1">
-            <Info className="w-3 h-3" /> Variables disponibles (se reemplazan por contacto):
-          </p>
-          <div className="flex flex-wrap gap-1">
-            {AVAILABLE_VARIABLES.map(v => (
-              <button
-                key={v.key}
-                type="button"
-                className="text-xs px-2 py-0.5 rounded bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
-                onClick={() => setMessage(prev => prev + v.key)}
-              >
-                {v.key} <span className="text-muted-foreground">— {v.desc}</span>
-              </button>
-            ))}
-          </div>
+        <label className="text-sm font-medium mb-2 block">Tipo de contenido</label>
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant={contentType === "text" ? "default" : "outline"}
+            onClick={() => setContentType("text")}
+            className="flex-1"
+          >
+            <Send className="w-4 h-4 mr-2" />Mensaje de texto
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={contentType === "pdf" ? "default" : "outline"}
+            onClick={() => setContentType("pdf")}
+            className="flex-1"
+          >
+            <FileText className="w-4 h-4 mr-2" />Documento PDF
+          </Button>
         </div>
       </div>
+
+      {/* Text Message */}
+      {contentType === "text" && (
+        <div>
+          <label className="text-sm font-medium">Mensaje</label>
+          <Textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Hola {nombre}, te escribimos para..." rows={4} />
+          <div className="mt-2 p-2 bg-muted/50 rounded-md">
+            <p className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1">
+              <Info className="w-3 h-3" /> Variables disponibles (se reemplazan por contacto):
+            </p>
+            <div className="flex flex-wrap gap-1">
+              {AVAILABLE_VARIABLES.map(v => (
+                <button
+                  key={v.key}
+                  type="button"
+                  className="text-xs px-2 py-0.5 rounded bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                  onClick={() => setMessage(prev => prev + v.key)}
+                >
+                  {v.key} <span className="text-muted-foreground">— {v.desc}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PDF Upload */}
+      {contentType === "pdf" && (
+        <div>
+          <label className="text-sm font-medium">Archivo PDF</label>
+          <div className="mt-1">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="w-full"
+              onClick={() => pdfInputRef.current?.click()}
+            >
+              <Upload className="w-4 h-4 mr-2" />
+              {pdfFile ? pdfFile.name : "Seleccionar archivo PDF"}
+            </Button>
+            <input ref={pdfInputRef} type="file" accept=".pdf" className="hidden" onChange={handlePdfFile} />
+          </div>
+          {pdfFile && (
+            <div className="mt-2 flex items-center justify-between p-2 bg-muted/30 rounded text-sm">
+              <div className="flex items-center gap-2">
+                <FileText className="w-4 h-4" />
+                <span className="truncate">{pdfFile.name}</span>
+                <span className="text-xs text-muted-foreground">{(pdfFile.size / 1024).toFixed(0)}KB</span>
+              </div>
+              <Button size="sm" variant="ghost" onClick={() => setPdfFile(null)}>
+                <X className="w-4 h-4 text-destructive" />
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Excel/CSV Import */}
       <div>
@@ -277,37 +350,6 @@ function CreateCampaignForm({ onCreated }: { onCreated: () => void }) {
             <span>{parsedContacts.length} contactos listos para importar</span>
           </div>
         )}
-      </div>
-
-      {/* PDF / Media Upload */}
-      <div>
-        <label className="text-sm font-medium">Archivos adjuntos (PDF, imágenes, documentos)</label>
-        <div className="mt-1">
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="w-full"
-            onClick={() => mediaInputRef.current?.click()}
-          >
-            <FileText className="w-4 h-4 mr-2" />
-            Subir archivos (PDF, imágenes, etc.)
-          </Button>
-          <input ref={mediaInputRef} type="file" multiple accept="image/*,.pdf,.doc,.docx" className="hidden" onChange={handleMediaFiles} />
-        </div>
-        {mediaFiles.length > 0 && (
-          <div className="mt-2 space-y-1">
-            {mediaFiles.map((f, i) => (
-              <div key={i} className="flex items-center justify-between p-2 bg-muted/30 rounded text-sm">
-                <div className="flex items-center gap-2 min-w-0">
-                  {f.type.startsWith("image/") ? <Image className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
-                  <span className="truncate">{f.name}</span>
-                  <span className="text-xs text-muted-foreground">{(f.size / 1024).toFixed(0)}KB</span>
-                </div>
-                <Button size="sm" variant="ghost" onClick={() => removeMediaFile(i)}>
-                  <X className="w-4 h-4 text-destructive" />
-                </Button>
-              </div>
             ))}
           </div>
         )}
