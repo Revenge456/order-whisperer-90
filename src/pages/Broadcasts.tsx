@@ -350,10 +350,14 @@ function CreateCampaignForm({ onCreated }: { onCreated: () => void }) {
             <span>{parsedContacts.length} contactos listos para importar</span>
           </div>
         )}
-            ))}
-          </div>
-        )}
       </div>
+
+      <Button onClick={handleSubmit} disabled={!name.trim() || isSubmitting} className="w-full">
+        {isSubmitting ? "Creando..." : "Crear Campaña"}
+      </Button>
+    </div>
+  );
+}
 
       <Button onClick={handleSubmit} disabled={!name.trim() || isSubmitting} className="w-full">
         {isSubmitting ? "Creando..." : "Crear Campaña"}
