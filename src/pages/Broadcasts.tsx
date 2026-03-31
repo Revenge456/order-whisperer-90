@@ -128,6 +128,8 @@ function CampaignCard({ campaign: c, onSelect }: { campaign: BroadcastCampaign; 
   );
 }
 
+const DEFAULT_WEBHOOK_URL = "https://n8n.groupquimera.com/webhook/broadcast-campaign";
+
 function CreateCampaignForm({ onCreated }: { onCreated: () => void }) {
   const [name, setName] = useState("");
   const [contentType, setContentType] = useState<"text" | "pdf">("text");
@@ -135,6 +137,7 @@ function CreateCampaignForm({ onCreated }: { onCreated: () => void }) {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [contactsFile, setContactsFile] = useState<File | null>(null);
   const [parsedContacts, setParsedContacts] = useState<{ name?: string; phone: string; store?: string }[]>([]);
+  const [webhookUrl, setWebhookUrl] = useState(DEFAULT_WEBHOOK_URL);
   const createCampaign = useCreateCampaign();
   const importContacts = useImportContacts();
   const uploadMedia = useUploadBroadcastMedia();
