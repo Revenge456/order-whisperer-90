@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from "react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
+import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -128,6 +129,8 @@ function CampaignCard({ campaign: c, onSelect }: { campaign: BroadcastCampaign; 
   );
 }
 
+const DEFAULT_WEBHOOK_URL = "https://n8n.groupquimera.com/webhook/broadcast-campaign";
+
 function CreateCampaignForm({ onCreated }: { onCreated: () => void }) {
   const [name, setName] = useState("");
   const [contentType, setContentType] = useState<"text" | "pdf">("text");
@@ -135,6 +138,7 @@ function CreateCampaignForm({ onCreated }: { onCreated: () => void }) {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [contactsFile, setContactsFile] = useState<File | null>(null);
   const [parsedContacts, setParsedContacts] = useState<{ name?: string; phone: string; store?: string }[]>([]);
+  const [webhookUrl, setWebhookUrl] = useState(DEFAULT_WEBHOOK_URL);
   const createCampaign = useCreateCampaign();
   const importContacts = useImportContacts();
   const uploadMedia = useUploadBroadcastMedia();
@@ -209,6 +213,10 @@ function CreateCampaignForm({ onCreated }: { onCreated: () => void }) {
 
   const handleSubmit = async () => {
     if (!name.trim()) return;
+    if (!webhookUrl.trim()) {
+      toast.error("Ingresa la URL del webhook");
+      return;
+    }
     if (contentType === "text" && !message.trim()) {
       toast.error("Escribe un mensaje");
       return;
@@ -217,27 +225,82 @@ function CreateCampaignForm({ onCreated }: { onCreated: () => void }) {
       toast.error("Sube un archivo PDF");
       return;
     }
+    if (!parsedContacts.length) {
+      toast.error("Importa contactos primero");
+      return;
+    }
+
     try {
+      // 1. Create campaign in DB
       const campaign = await createCampaign.mutateAsync({
         name: name.trim(),
         message: contentType === "text" ? message.trim() : `[PDF] ${pdfFile!.name}`,
+        webhook_url: webhookUrl.trim(),
       });
 
-      if (parsedContacts.length) {
-        await importContacts.mutateAsync({ campaignId: campaign.id, contacts: parsedContacts });
-      }
+      // 2. Import contacts to DB
+      await importContacts.mutateAsync({ campaignId: campaign.id, contacts: parsedContacts });
 
+      // 3. Upload PDF if applicable
+      let pdfUrl: string | null = null;
       if (contentType === "pdf" && pdfFile) {
-        await uploadMedia.mutateAsync({ campaignId: campaign.id, file: pdfFile });
+        const filePath = `${campaign.id}/${Date.now()}_${pdfFile.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from('broadcast-media')
+          .upload(filePath, pdfFile);
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabase.storage
+          .from('broadcast-media')
+          .getPublicUrl(filePath);
+        pdfUrl = urlData.publicUrl;
+
+        await supabase.from('broadcast_media').insert({
+          campaign_id: campaign.id,
+          file_name: pdfFile.name,
+          file_url: pdfUrl,
+          file_type: pdfFile.type,
+          file_size: pdfFile.size,
+        });
       }
 
+      // 4. Update campaign status to sending
+      await supabase
+        .from('broadcast_campaigns')
+        .update({ status: 'sending', started_at: new Date().toISOString() })
+        .eq('id', campaign.id);
+
+      // 5. Trigger n8n webhook with ALL data
+      const webhookPayload = {
+        campaign_id: campaign.id,
+        campaign_name: name.trim(),
+        content_type: contentType,
+        message: contentType === "text" ? message.trim() : null,
+        pdf_url: pdfUrl,
+        pdf_name: contentType === "pdf" ? pdfFile!.name : null,
+        contacts: parsedContacts.map(c => ({
+          phone: c.phone,
+          name: c.name || null,
+          store: c.store || null,
+        })),
+        total_contacts: parsedContacts.length,
+      };
+
+      await fetch(webhookUrl.trim(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        mode: 'no-cors',
+        body: JSON.stringify(webhookPayload),
+      });
+
+      toast.success(`Campaña creada y enviada a n8n (${parsedContacts.length} contactos)`);
       onCreated();
-    } catch {
-      // errors handled by mutation hooks
+    } catch (err) {
+      toast.error('Error: ' + (err instanceof Error ? err.message : 'Error desconocido'));
     }
   };
 
-  const isSubmitting = createCampaign.isPending || importContacts.isPending || uploadMedia.isPending;
+  const isSubmitting = createCampaign.isPending || importContacts.isPending;
 
   return (
     <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
@@ -352,8 +415,20 @@ function CreateCampaignForm({ onCreated }: { onCreated: () => void }) {
         )}
       </div>
 
+      {/* Webhook URL */}
+      <div>
+        <label className="text-sm font-medium">URL del Webhook n8n</label>
+        <Input
+          value={webhookUrl}
+          onChange={(e) => setWebhookUrl(e.target.value)}
+          placeholder="https://n8n.tudominio.com/webhook/..."
+          className="mt-1"
+        />
+        <p className="text-xs text-muted-foreground mt-1">Se activará automáticamente al crear la campaña</p>
+      </div>
+
       <Button onClick={handleSubmit} disabled={!name.trim() || isSubmitting} className="w-full">
-        {isSubmitting ? "Creando..." : "Crear Campaña"}
+        {isSubmitting ? "Creando y enviando..." : "Crear Campaña y Enviar"}
       </Button>
     </div>
   );
