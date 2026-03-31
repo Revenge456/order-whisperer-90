@@ -131,16 +131,104 @@ function CampaignCard({ campaign: c, onSelect }: { campaign: BroadcastCampaign; 
 function CreateCampaignForm({ onCreated }: { onCreated: () => void }) {
   const [name, setName] = useState("");
   const [message, setMessage] = useState("");
+  const [contactsFile, setContactsFile] = useState<File | null>(null);
+  const [parsedContacts, setParsedContacts] = useState<{ name?: string; phone: string; store?: string }[]>([]);
+  const [mediaFiles, setMediaFiles] = useState<File[]>([]);
   const createCampaign = useCreateCampaign();
+  const importContacts = useImportContacts();
+  const uploadMedia = useUploadBroadcastMedia();
+  const contactsInputRef = useRef<HTMLInputElement>(null);
+  const mediaInputRef = useRef<HTMLInputElement>(null);
+
+  const handleContactsFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setContactsFile(file);
+    const ext = file.name.split('.').pop()?.toLowerCase();
+
+    const parseRows = (rows: string[][]) => {
+      if (rows.length < 2) { toast.error("Archivo vacío"); return; }
+      const header = rows[0].map(h => h.toLowerCase().trim());
+      const phoneIdx = header.findIndex(h => ["phone", "telefono", "teléfono", "número", "numero", "whatsapp", "celular"].includes(h));
+      const nameIdx = header.findIndex(h => ["name", "nombre", "cliente"].includes(h));
+      const storeIdx = header.findIndex(h => ["store", "tienda", "sucursal", "local"].includes(h));
+      if (phoneIdx === -1) {
+        toast.error('Debe tener columna "phone", "telefono" o "numero"');
+        return;
+      }
+      const parsed: { name?: string; phone: string; store?: string }[] = [];
+      for (let i = 1; i < rows.length; i++) {
+        const phone = rows[i][phoneIdx]?.toString().replace(/\s/g, '');
+        if (!phone) continue;
+        parsed.push({
+          phone,
+          name: nameIdx >= 0 ? rows[i][nameIdx]?.toString() : undefined,
+          store: storeIdx >= 0 ? rows[i][storeIdx]?.toString() : undefined,
+        });
+      }
+      if (!parsed.length) { toast.error("No se encontraron contactos válidos"); return; }
+      setParsedContacts(parsed);
+      toast.success(`${parsed.length} contactos encontrados`);
+    };
+
+    if (ext === 'csv') {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const text = event.target?.result as string;
+        const rows = text.split("\n").filter(l => l.trim()).map(l => l.split(",").map(c => c.trim().replace(/"/g, '')));
+        parseRows(rows);
+      };
+      reader.readAsText(file);
+    } else if (ext === 'xlsx' || ext === 'xls') {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const data = new Uint8Array(event.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: "array" });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows: string[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+        parseRows(rows);
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      toast.error("Formato no soportado. Usa CSV o Excel (.xlsx)");
+    }
+    e.target.value = "";
+  }, []);
+
+  const handleMediaFiles = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    setMediaFiles(prev => [...prev, ...Array.from(files)]);
+    e.target.value = "";
+  }, []);
+
+  const removeMediaFile = (index: number) => {
+    setMediaFiles(prev => prev.filter((_, i) => i !== index));
+  };
 
   const handleSubmit = async () => {
     if (!name.trim()) return;
-    await createCampaign.mutateAsync({ name: name.trim(), message: message.trim() });
-    onCreated();
+    try {
+      const campaign = await createCampaign.mutateAsync({ name: name.trim(), message: message.trim() });
+
+      if (parsedContacts.length) {
+        await importContacts.mutateAsync({ campaignId: campaign.id, contacts: parsedContacts });
+      }
+
+      for (const file of mediaFiles) {
+        await uploadMedia.mutateAsync({ campaignId: campaign.id, file });
+      }
+
+      onCreated();
+    } catch {
+      // errors handled by mutation hooks
+    }
   };
 
+  const isSubmitting = createCampaign.isPending || importContacts.isPending || uploadMedia.isPending;
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
       <div>
         <label className="text-sm font-medium">Nombre de la campaña</label>
         <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej: Promo Marzo 2026" />
@@ -166,8 +254,67 @@ function CreateCampaignForm({ onCreated }: { onCreated: () => void }) {
           </div>
         </div>
       </div>
-      <Button onClick={handleSubmit} disabled={!name.trim() || createCampaign.isPending} className="w-full">
-        {createCampaign.isPending ? "Creando..." : "Crear Campaña"}
+
+      {/* Excel/CSV Import */}
+      <div>
+        <label className="text-sm font-medium">Contactos (Excel o CSV)</label>
+        <div className="mt-1">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="w-full"
+            onClick={() => contactsInputRef.current?.click()}
+          >
+            <Upload className="w-4 h-4 mr-2" />
+            {contactsFile ? contactsFile.name : "Subir archivo de contactos (.xlsx, .csv)"}
+          </Button>
+          <input ref={contactsInputRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleContactsFile} />
+        </div>
+        {parsedContacts.length > 0 && (
+          <div className="mt-2 flex items-center gap-2 text-sm text-green-600">
+            <CheckCircle2 className="w-4 h-4" />
+            <span>{parsedContacts.length} contactos listos para importar</span>
+          </div>
+        )}
+      </div>
+
+      {/* PDF / Media Upload */}
+      <div>
+        <label className="text-sm font-medium">Archivos adjuntos (PDF, imágenes, documentos)</label>
+        <div className="mt-1">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="w-full"
+            onClick={() => mediaInputRef.current?.click()}
+          >
+            <FileText className="w-4 h-4 mr-2" />
+            Subir archivos (PDF, imágenes, etc.)
+          </Button>
+          <input ref={mediaInputRef} type="file" multiple accept="image/*,.pdf,.doc,.docx" className="hidden" onChange={handleMediaFiles} />
+        </div>
+        {mediaFiles.length > 0 && (
+          <div className="mt-2 space-y-1">
+            {mediaFiles.map((f, i) => (
+              <div key={i} className="flex items-center justify-between p-2 bg-muted/30 rounded text-sm">
+                <div className="flex items-center gap-2 min-w-0">
+                  {f.type.startsWith("image/") ? <Image className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
+                  <span className="truncate">{f.name}</span>
+                  <span className="text-xs text-muted-foreground">{(f.size / 1024).toFixed(0)}KB</span>
+                </div>
+                <Button size="sm" variant="ghost" onClick={() => removeMediaFile(i)}>
+                  <X className="w-4 h-4 text-destructive" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <Button onClick={handleSubmit} disabled={!name.trim() || isSubmitting} className="w-full">
+        {isSubmitting ? "Creando..." : "Crear Campaña"}
       </Button>
     </div>
   );
