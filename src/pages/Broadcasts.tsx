@@ -415,17 +415,6 @@ function CreateCampaignForm({ onCreated }: { onCreated: () => void }) {
         )}
       </div>
 
-      {/* Webhook URL */}
-      <div>
-        <label className="text-sm font-medium">URL del Webhook n8n</label>
-        <Input
-          value={webhookUrl}
-          onChange={(e) => setWebhookUrl(e.target.value)}
-          placeholder="https://n8n.tudominio.com/webhook/..."
-          className="mt-1"
-        />
-        <p className="text-xs text-muted-foreground mt-1">Se activará automáticamente al crear la campaña</p>
-      </div>
 
       <Button onClick={handleSubmit} disabled={!name.trim() || isSubmitting} className="w-full">
         {isSubmitting ? "Creando y enviando..." : "Crear Campaña y Enviar"}
