@@ -62,8 +62,10 @@ export default function Broadcasts() {
             <DialogTrigger asChild>
               <Button><Plus className="w-4 h-4 mr-2" />Nueva Campaña</Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg">
-              <DialogHeader><DialogTitle>Crear Campaña</DialogTitle></DialogHeader>
+            <DialogContent className="max-w-lg max-h-[85vh] overflow-hidden flex flex-col p-0">
+              <DialogHeader className="px-6 pt-6 pb-0">
+                <DialogTitle>Crear Campaña</DialogTitle>
+              </DialogHeader>
               <CreateCampaignForm onCreated={() => setCreateOpen(false)} />
             </DialogContent>
           </Dialog>
