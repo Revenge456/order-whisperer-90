@@ -447,6 +447,7 @@ function CreateCampaignForm({ onCreated }: { onCreated: () => void }) {
         {isSubmitting ? "Creando y enviando..." : "Crear Campaña y Enviar"}
       </Button>
     </div>
+    </ScrollArea>
   );
 }
 
