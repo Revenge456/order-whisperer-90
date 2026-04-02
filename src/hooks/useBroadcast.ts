@@ -65,7 +65,7 @@ export function useCreateCampaign() {
   return useMutation({
     mutationFn: async (campaign: {
       campaign_name: string;
-      content_type: 'text' | 'pdf';
+      content_type: 'text' | 'pdf' | 'text_and_pdf';
       message?: string;
       pdf_url?: string;
       pdf_name?: string;
