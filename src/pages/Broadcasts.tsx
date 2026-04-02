@@ -213,12 +213,8 @@ function CreateCampaignForm({ onCreated }: { onCreated: () => void }) {
 
   const handleSubmit = async () => {
     if (!name.trim()) return;
-    if (contentType === "text" && !message.trim()) {
+    if (!message.trim()) {
       toast.error("Escribe un mensaje");
-      return;
-    }
-    if (contentType === "pdf" && !pdfFile) {
-      toast.error("Sube un archivo PDF");
       return;
     }
     if (!parsedContacts.length) {
