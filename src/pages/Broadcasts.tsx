@@ -394,9 +394,6 @@ function CampaignDetail({ campaign, onClose }: {
             <Badge variant={statusConfig[campaign.status]?.variant || "secondary"}>
               {statusConfig[campaign.status]?.label || campaign.status}
             </Badge>
-            <Badge variant="outline" className="text-xs">
-              {campaign.content_type === "pdf" ? "📄 PDF" : "💬 Texto"}
-            </Badge>
           </DialogTitle>
         </DialogHeader>
 
