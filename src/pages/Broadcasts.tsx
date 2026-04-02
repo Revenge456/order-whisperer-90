@@ -321,7 +321,7 @@ function CreateCampaignForm({ onCreated }: { onCreated: () => void }) {
       // 2. Create campaign in DB with all data
       const campaign = await createCampaign.mutateAsync({
         campaign_name: name.trim(),
-        content_type: 'text',
+        content_type: pdfFile ? 'text_and_pdf' : 'text',
         message: message.trim(),
         pdf_url: pdfUrl || undefined,
         pdf_name: pdfName || undefined,
