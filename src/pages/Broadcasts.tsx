@@ -225,7 +225,8 @@ function CreateCampaignForm({ onCreated }: { onCreated: () => void }) {
       let pdfUrl: string | null = null;
       let pdfName: string | null = null;
       if (pdfFile) {
-        const filePath = `broadcasts/${Date.now()}_${pdfFile.name}`;
+        const safeName = pdfFile.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9._-]/g, "_");
+        const filePath = `broadcasts/${Date.now()}_${safeName}`;
         const { error: uploadError } = await supabase.storage
           .from('broadcast-media')
           .upload(filePath, pdfFile);
