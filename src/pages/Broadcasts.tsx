@@ -136,7 +136,6 @@ function CampaignCard({ campaign: c, onSelect }: { campaign: BroadcastCampaign; 
 
 function CreateCampaignForm({ onCreated }: { onCreated: () => void }) {
   const [name, setName] = useState("");
-  const [contentType, setContentType] = useState<"text" | "pdf">("text");
   const [message, setMessage] = useState("");
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [contactsFile, setContactsFile] = useState<File | null>(null);
