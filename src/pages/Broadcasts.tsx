@@ -109,14 +109,12 @@ function CampaignCard({ campaign: c, onSelect }: { campaign: BroadcastCampaign; 
         <Badge variant={status.variant}>{status.label}</Badge>
       </CardHeader>
       <CardContent>
-        <div className="flex items-center gap-2 mb-2">
-          <Badge variant="outline" className="text-xs">
-            {c.content_type === "pdf" ? "📄 PDF" : "💬 Texto"}
-          </Badge>
-        </div>
         <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-          {c.content_type === "text" ? (c.message || "Sin mensaje") : (c.pdf_name || "PDF")}
+          {c.message || "Sin mensaje"}
         </p>
+        {c.pdf_name && (
+          <Badge variant="outline" className="text-xs mb-2">📄 {c.pdf_name}</Badge>
+        )}
         <div className="flex items-center gap-4 text-xs text-muted-foreground">
           <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" />{c.total_contacts}</span>
           <span className="flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5 text-green-500" />{c.sent_count}</span>
