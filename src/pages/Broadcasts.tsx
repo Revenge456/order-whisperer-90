@@ -109,14 +109,12 @@ function CampaignCard({ campaign: c, onSelect }: { campaign: BroadcastCampaign; 
         <Badge variant={status.variant}>{status.label}</Badge>
       </CardHeader>
       <CardContent>
-        <div className="flex items-center gap-2 mb-2">
-          <Badge variant="outline" className="text-xs">
-            {c.content_type === "pdf" ? "📄 PDF" : "💬 Texto"}
-          </Badge>
-        </div>
         <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-          {c.content_type === "text" ? (c.message || "Sin mensaje") : (c.pdf_name || "PDF")}
+          {c.message || "Sin mensaje"}
         </p>
+        {c.pdf_name && (
+          <Badge variant="outline" className="text-xs mb-2">📄 {c.pdf_name}</Badge>
+        )}
         <div className="flex items-center gap-4 text-xs text-muted-foreground">
           <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" />{c.total_contacts}</span>
           <span className="flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5 text-green-500" />{c.sent_count}</span>
@@ -136,7 +134,6 @@ function CampaignCard({ campaign: c, onSelect }: { campaign: BroadcastCampaign; 
 
 function CreateCampaignForm({ onCreated }: { onCreated: () => void }) {
   const [name, setName] = useState("");
-  const [contentType, setContentType] = useState<"text" | "pdf">("text");
   const [message, setMessage] = useState("");
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [contactsFile, setContactsFile] = useState<File | null>(null);
@@ -214,12 +211,8 @@ function CreateCampaignForm({ onCreated }: { onCreated: () => void }) {
 
   const handleSubmit = async () => {
     if (!name.trim()) return;
-    if (contentType === "text" && !message.trim()) {
+    if (!message.trim()) {
       toast.error("Escribe un mensaje");
-      return;
-    }
-    if (contentType === "pdf" && !pdfFile) {
-      toast.error("Sube un archivo PDF");
       return;
     }
     if (!parsedContacts.length) {
@@ -231,7 +224,7 @@ function CreateCampaignForm({ onCreated }: { onCreated: () => void }) {
       // 1. Upload PDF if applicable
       let pdfUrl: string | null = null;
       let pdfName: string | null = null;
-      if (contentType === "pdf" && pdfFile) {
+      if (pdfFile) {
         const filePath = `broadcasts/${Date.now()}_${pdfFile.name}`;
         const { error: uploadError } = await supabase.storage
           .from('broadcast-media')
@@ -248,8 +241,8 @@ function CreateCampaignForm({ onCreated }: { onCreated: () => void }) {
       // 2. Create campaign in DB
       const campaign = await createCampaign.mutateAsync({
         campaign_name: name.trim(),
-        content_type: contentType,
-        message: contentType === "text" ? message.trim() : undefined,
+        content_type: 'text',
+        message: message.trim(),
         pdf_url: pdfUrl || undefined,
         pdf_name: pdfName || undefined,
       });
@@ -267,8 +260,8 @@ function CreateCampaignForm({ onCreated }: { onCreated: () => void }) {
       const webhookPayload = {
         campaign_id: campaign.id,
         campaign_name: name.trim(),
-        content_type: contentType,
-        message: contentType === "text" ? message.trim() : null,
+        content_type: 'text',
+        message: message.trim(),
         pdf_url: pdfUrl,
         pdf_name: pdfName,
         contacts: parsedContacts.map(c => ({
@@ -302,87 +295,58 @@ function CreateCampaignForm({ onCreated }: { onCreated: () => void }) {
         <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej: Promo Marzo 2026" />
       </div>
 
-      {/* Content Type Toggle */}
+      {/* Text Message - Always visible */}
       <div>
-        <label className="text-sm font-medium mb-2 block">Tipo de contenido</label>
-        <div className="flex gap-2">
-          <Button
-            type="button"
-            size="sm"
-            variant={contentType === "text" ? "default" : "outline"}
-            onClick={() => setContentType("text")}
-            className="flex-1"
-          >
-            <Send className="w-4 h-4 mr-2" />Mensaje de texto
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={contentType === "pdf" ? "default" : "outline"}
-            onClick={() => setContentType("pdf")}
-            className="flex-1"
-          >
-            <FileText className="w-4 h-4 mr-2" />Documento PDF
-          </Button>
+        <label className="text-sm font-medium">Mensaje</label>
+        <Textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Hola {nombre}, te escribimos para..." rows={4} />
+        <div className="mt-2 p-2 bg-muted/50 rounded-md">
+          <p className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1">
+            <Info className="w-3 h-3" /> Variables disponibles (se reemplazan por contacto):
+          </p>
+          <div className="flex flex-wrap gap-1">
+            {AVAILABLE_VARIABLES.map(v => (
+              <button
+                key={v.key}
+                type="button"
+                className="text-xs px-2 py-0.5 rounded bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                onClick={() => setMessage(prev => prev + v.key)}
+              >
+                {v.key} <span className="text-muted-foreground">— {v.desc}</span>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Text Message */}
-      {contentType === "text" && (
-        <div>
-          <label className="text-sm font-medium">Mensaje</label>
-          <Textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Hola {nombre}, te escribimos para..." rows={4} />
-          <div className="mt-2 p-2 bg-muted/50 rounded-md">
-            <p className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1">
-              <Info className="w-3 h-3" /> Variables disponibles (se reemplazan por contacto):
-            </p>
-            <div className="flex flex-wrap gap-1">
-              {AVAILABLE_VARIABLES.map(v => (
-                <button
-                  key={v.key}
-                  type="button"
-                  className="text-xs px-2 py-0.5 rounded bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
-                  onClick={() => setMessage(prev => prev + v.key)}
-                >
-                  {v.key} <span className="text-muted-foreground">— {v.desc}</span>
-                </button>
-              ))}
-            </div>
-          </div>
+      {/* Optional PDF Upload */}
+      <div>
+        <label className="text-sm font-medium">Adjuntar archivo PDF (opcional)</label>
+        <div className="mt-1">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="w-full"
+            onClick={() => pdfInputRef.current?.click()}
+          >
+            <Upload className="w-4 h-4 mr-2" />
+            {pdfFile ? pdfFile.name : "Seleccionar archivo PDF"}
+          </Button>
+          <input ref={pdfInputRef} type="file" accept=".pdf" className="hidden" onChange={handlePdfFile} />
         </div>
-      )}
-
-      {/* PDF Upload */}
-      {contentType === "pdf" && (
-        <div>
-          <label className="text-sm font-medium">Archivo PDF</label>
-          <div className="mt-1">
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="w-full"
-              onClick={() => pdfInputRef.current?.click()}
-            >
-              <Upload className="w-4 h-4 mr-2" />
-              {pdfFile ? pdfFile.name : "Seleccionar archivo PDF"}
+        {pdfFile && (
+          <div className="mt-2 flex items-center justify-between p-2 bg-muted/30 rounded text-sm">
+            <div className="flex items-center gap-2">
+              <FileText className="w-4 h-4" />
+              <span className="truncate">{pdfFile.name}</span>
+              <span className="text-xs text-muted-foreground">{(pdfFile.size / 1024).toFixed(0)}KB</span>
+            </div>
+            <Button size="sm" variant="ghost" onClick={() => setPdfFile(null)}>
+              <X className="w-4 h-4 text-destructive" />
             </Button>
-            <input ref={pdfInputRef} type="file" accept=".pdf" className="hidden" onChange={handlePdfFile} />
           </div>
-          {pdfFile && (
-            <div className="mt-2 flex items-center justify-between p-2 bg-muted/30 rounded text-sm">
-              <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4" />
-                <span className="truncate">{pdfFile.name}</span>
-                <span className="text-xs text-muted-foreground">{(pdfFile.size / 1024).toFixed(0)}KB</span>
-              </div>
-              <Button size="sm" variant="ghost" onClick={() => setPdfFile(null)}>
-                <X className="w-4 h-4 text-destructive" />
-              </Button>
-            </div>
-          )}
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Excel/CSV Import */}
       <div>
@@ -430,35 +394,34 @@ function CampaignDetail({ campaign, onClose }: {
             <Badge variant={statusConfig[campaign.status]?.variant || "secondary"}>
               {statusConfig[campaign.status]?.label || campaign.status}
             </Badge>
-            <Badge variant="outline" className="text-xs">
-              {campaign.content_type === "pdf" ? "📄 PDF" : "💬 Texto"}
-            </Badge>
           </DialogTitle>
         </DialogHeader>
 
         <ScrollArea className="flex-1 pr-4">
           <div className="space-y-6">
-            {/* Content */}
+            {/* Message */}
             <div>
-              <label className="text-sm font-medium">
-                {campaign.content_type === "text" ? "Mensaje" : "Documento PDF"}
-              </label>
+              <label className="text-sm font-medium">Mensaje</label>
               <div className="mt-1 p-3 bg-muted/50 rounded-lg text-sm whitespace-pre-wrap">
-                {campaign.content_type === "text"
-                  ? (campaign.message || "Sin mensaje")
-                  : (
-                    <div className="flex items-center gap-2">
-                      <FileText className="w-4 h-4" />
-                      <span>{campaign.pdf_name || "PDF"}</span>
-                      {campaign.pdf_url && (
-                        <a href={campaign.pdf_url} target="_blank" rel="noreferrer" className="text-primary underline text-xs">
-                          Ver PDF
-                        </a>
-                      )}
-                    </div>
-                  )}
+                {campaign.message || "Sin mensaje"}
               </div>
             </div>
+
+            {/* PDF if attached */}
+            {campaign.pdf_name && (
+              <div>
+                <label className="text-sm font-medium">PDF adjunto</label>
+                <div className="mt-1 p-3 bg-muted/50 rounded-lg text-sm flex items-center gap-2">
+                  <FileText className="w-4 h-4" />
+                  <span>{campaign.pdf_name}</span>
+                  {campaign.pdf_url && (
+                    <a href={campaign.pdf_url} target="_blank" rel="noreferrer" className="text-primary underline text-xs">
+                      Ver PDF
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Contacts */}
             <div>
