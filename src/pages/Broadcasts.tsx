@@ -359,7 +359,8 @@ function CreateCampaignForm({ onCreated }: { onCreated: () => void }) {
   const isSubmitting = createCampaign.isPending || importContacts.isPending;
 
   return (
-    <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+    <ScrollArea className="max-h-[calc(85vh-5rem)] px-6 pb-6">
+    <div className="space-y-4">
       <div>
         <label className="text-sm font-medium">Nombre de la campaña</label>
         <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej: Promo Marzo 2026" />
