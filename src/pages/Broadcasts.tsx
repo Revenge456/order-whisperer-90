@@ -297,87 +297,58 @@ function CreateCampaignForm({ onCreated }: { onCreated: () => void }) {
         <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej: Promo Marzo 2026" />
       </div>
 
-      {/* Content Type Toggle */}
+      {/* Text Message - Always visible */}
       <div>
-        <label className="text-sm font-medium mb-2 block">Tipo de contenido</label>
-        <div className="flex gap-2">
-          <Button
-            type="button"
-            size="sm"
-            variant={contentType === "text" ? "default" : "outline"}
-            onClick={() => setContentType("text")}
-            className="flex-1"
-          >
-            <Send className="w-4 h-4 mr-2" />Mensaje de texto
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={contentType === "pdf" ? "default" : "outline"}
-            onClick={() => setContentType("pdf")}
-            className="flex-1"
-          >
-            <FileText className="w-4 h-4 mr-2" />Documento PDF
-          </Button>
+        <label className="text-sm font-medium">Mensaje</label>
+        <Textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Hola {nombre}, te escribimos para..." rows={4} />
+        <div className="mt-2 p-2 bg-muted/50 rounded-md">
+          <p className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1">
+            <Info className="w-3 h-3" /> Variables disponibles (se reemplazan por contacto):
+          </p>
+          <div className="flex flex-wrap gap-1">
+            {AVAILABLE_VARIABLES.map(v => (
+              <button
+                key={v.key}
+                type="button"
+                className="text-xs px-2 py-0.5 rounded bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                onClick={() => setMessage(prev => prev + v.key)}
+              >
+                {v.key} <span className="text-muted-foreground">— {v.desc}</span>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Text Message */}
-      {contentType === "text" && (
-        <div>
-          <label className="text-sm font-medium">Mensaje</label>
-          <Textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Hola {nombre}, te escribimos para..." rows={4} />
-          <div className="mt-2 p-2 bg-muted/50 rounded-md">
-            <p className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1">
-              <Info className="w-3 h-3" /> Variables disponibles (se reemplazan por contacto):
-            </p>
-            <div className="flex flex-wrap gap-1">
-              {AVAILABLE_VARIABLES.map(v => (
-                <button
-                  key={v.key}
-                  type="button"
-                  className="text-xs px-2 py-0.5 rounded bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
-                  onClick={() => setMessage(prev => prev + v.key)}
-                >
-                  {v.key} <span className="text-muted-foreground">— {v.desc}</span>
-                </button>
-              ))}
-            </div>
-          </div>
+      {/* Optional PDF Upload */}
+      <div>
+        <label className="text-sm font-medium">Adjuntar archivo PDF (opcional)</label>
+        <div className="mt-1">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="w-full"
+            onClick={() => pdfInputRef.current?.click()}
+          >
+            <Upload className="w-4 h-4 mr-2" />
+            {pdfFile ? pdfFile.name : "Seleccionar archivo PDF"}
+          </Button>
+          <input ref={pdfInputRef} type="file" accept=".pdf" className="hidden" onChange={handlePdfFile} />
         </div>
-      )}
-
-      {/* PDF Upload */}
-      {contentType === "pdf" && (
-        <div>
-          <label className="text-sm font-medium">Archivo PDF</label>
-          <div className="mt-1">
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="w-full"
-              onClick={() => pdfInputRef.current?.click()}
-            >
-              <Upload className="w-4 h-4 mr-2" />
-              {pdfFile ? pdfFile.name : "Seleccionar archivo PDF"}
+        {pdfFile && (
+          <div className="mt-2 flex items-center justify-between p-2 bg-muted/30 rounded text-sm">
+            <div className="flex items-center gap-2">
+              <FileText className="w-4 h-4" />
+              <span className="truncate">{pdfFile.name}</span>
+              <span className="text-xs text-muted-foreground">{(pdfFile.size / 1024).toFixed(0)}KB</span>
+            </div>
+            <Button size="sm" variant="ghost" onClick={() => setPdfFile(null)}>
+              <X className="w-4 h-4 text-destructive" />
             </Button>
-            <input ref={pdfInputRef} type="file" accept=".pdf" className="hidden" onChange={handlePdfFile} />
           </div>
-          {pdfFile && (
-            <div className="mt-2 flex items-center justify-between p-2 bg-muted/30 rounded text-sm">
-              <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4" />
-                <span className="truncate">{pdfFile.name}</span>
-                <span className="text-xs text-muted-foreground">{(pdfFile.size / 1024).toFixed(0)}KB</span>
-              </div>
-              <Button size="sm" variant="ghost" onClick={() => setPdfFile(null)}>
-                <X className="w-4 h-4 text-destructive" />
-              </Button>
-            </div>
-          )}
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Excel/CSV Import */}
       <div>
