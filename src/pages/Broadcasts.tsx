@@ -62,8 +62,10 @@ export default function Broadcasts() {
             <DialogTrigger asChild>
               <Button><Plus className="w-4 h-4 mr-2" />Nueva Campaña</Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg">
-              <DialogHeader><DialogTitle>Crear Campaña</DialogTitle></DialogHeader>
+            <DialogContent className="max-w-lg max-h-[85vh] overflow-hidden flex flex-col p-0">
+              <DialogHeader className="px-6 pt-6 pb-0">
+                <DialogTitle>Crear Campaña</DialogTitle>
+              </DialogHeader>
               <CreateCampaignForm onCreated={() => setCreateOpen(false)} />
             </DialogContent>
           </Dialog>
@@ -357,7 +359,8 @@ function CreateCampaignForm({ onCreated }: { onCreated: () => void }) {
   const isSubmitting = createCampaign.isPending || importContacts.isPending;
 
   return (
-    <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+    <ScrollArea className="max-h-[calc(85vh-5rem)] px-6 pb-6">
+    <div className="space-y-4">
       <div>
         <label className="text-sm font-medium">Nombre de la campaña</label>
         <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej: Promo Marzo 2026" />
@@ -444,6 +447,7 @@ function CreateCampaignForm({ onCreated }: { onCreated: () => void }) {
         {isSubmitting ? "Creando y enviando..." : "Crear Campaña y Enviar"}
       </Button>
     </div>
+    </ScrollArea>
   );
 }
 
