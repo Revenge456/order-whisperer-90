@@ -226,7 +226,7 @@ function CreateCampaignForm({ onCreated }: { onCreated: () => void }) {
       // 1. Upload PDF if applicable
       let pdfUrl: string | null = null;
       let pdfName: string | null = null;
-      if (contentType === "pdf" && pdfFile) {
+      if (pdfFile) {
         const filePath = `broadcasts/${Date.now()}_${pdfFile.name}`;
         const { error: uploadError } = await supabase.storage
           .from('broadcast-media')
