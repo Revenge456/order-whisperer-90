@@ -262,8 +262,8 @@ function CreateCampaignForm({ onCreated }: { onCreated: () => void }) {
       const webhookPayload = {
         campaign_id: campaign.id,
         campaign_name: name.trim(),
-        content_type: contentType,
-        message: contentType === "text" ? message.trim() : null,
+        content_type: 'text',
+        message: message.trim(),
         pdf_url: pdfUrl,
         pdf_name: pdfName,
         contacts: parsedContacts.map(c => ({
