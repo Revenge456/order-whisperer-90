@@ -464,102 +464,127 @@ function CampaignDetail({ campaign, onClose }: {
     return () => clearInterval(interval);
   }, [campaign.status, campaign.id, queryClient]);
 
+  const sent = (campaign as any).sent_contacts || 0;
+  const failed = (campaign as any).failed_contacts || 0;
+  const total = campaign.total_contacts || 0;
+  const successRate = total > 0 ? Math.round((sent / total) * 100) : 0;
+
+  const sentContacts = contacts?.filter(c => c.status === 'sent') || [];
+  const failedContacts = contacts?.filter(c => c.status === 'failed') || [];
+  const pendingContacts = contacts?.filter(c => c.status === 'pending') || [];
+
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            {campaign.campaign_name}
-            {campaign.status === 'sending' && <Badge className="bg-blue-500 text-white animate-pulse">Enviando</Badge>}
-            {campaign.status === 'completed' && <Badge className="bg-green-500 text-white">Completada</Badge>}
-            {campaign.status === 'failed' && <Badge variant="destructive">Fallida</Badge>}
-            {campaign.status === 'pending' && <Badge variant="secondary">Borrador</Badge>}
-          </DialogTitle>
-        </DialogHeader>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+        {/* Fixed Header */}
+        <div className="px-6 pt-6 pb-4 border-b space-y-4">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {campaign.campaign_name}
+              {campaign.status === 'sending' && <Badge className="bg-blue-500 text-white animate-pulse">Enviando</Badge>}
+              {campaign.status === 'completed' && <Badge className="bg-green-500 text-white">Completada</Badge>}
+              {campaign.status === 'failed' && <Badge variant="destructive">Fallida</Badge>}
+              {campaign.status === 'pending' && <Badge variant="secondary">Borrador</Badge>}
+            </DialogTitle>
+          </DialogHeader>
 
-        <ScrollArea className="flex-1 pr-4">
-          <div className="space-y-6">
-            {/* Progress Bar */}
-            <CampaignProgressBar campaign={campaign} />
-
-            {/* Message */}
-            <div>
-              <label className="text-sm font-medium">Mensaje</label>
-              <div className="mt-1 p-3 bg-muted/50 rounded-lg text-sm whitespace-pre-wrap">
-                {campaign.message || "Sin mensaje"}
-              </div>
+          {/* Stats bar - always visible */}
+          <div className="grid grid-cols-4 gap-3">
+            <div className="bg-muted/50 rounded-lg p-3 text-center">
+              <p className="text-xl font-bold">{total}</p>
+              <p className="text-[11px] text-muted-foreground">Total</p>
             </div>
+            <div className="bg-green-500/10 rounded-lg p-3 text-center">
+              <p className="text-xl font-bold text-green-600">{sent}</p>
+              <p className="text-[11px] text-muted-foreground">Enviados</p>
+            </div>
+            <div className="bg-destructive/10 rounded-lg p-3 text-center">
+              <p className="text-xl font-bold text-destructive">{failed}</p>
+              <p className="text-[11px] text-muted-foreground">Fallidos</p>
+            </div>
+            <div className="bg-primary/10 rounded-lg p-3 text-center">
+              <p className="text-xl font-bold text-primary">{successRate}%</p>
+              <p className="text-[11px] text-muted-foreground">Tasa éxito</p>
+            </div>
+          </div>
 
-            {/* PDF if attached */}
-            {campaign.pdf_name && (
-              <div>
-                <label className="text-sm font-medium">PDF adjunto</label>
-                <div className="mt-1 p-3 bg-muted/50 rounded-lg text-sm flex items-center gap-2">
-                  <FileText className="w-4 h-4" />
-                  <span>{campaign.pdf_name}</span>
-                  {campaign.pdf_url && (
-                    <a href={campaign.pdf_url} target="_blank" rel="noreferrer" className="text-primary underline text-xs">
-                      Ver PDF
-                    </a>
-                  )}
-                </div>
-              </div>
-            )}
+          {/* Progress bar */}
+          <CampaignProgressBar campaign={campaign} />
+        </div>
 
-            {/* Contacts */}
-            <div>
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+          {/* Message - collapsible summary */}
+          <details className="group">
+            <summary className="text-sm font-medium cursor-pointer flex items-center gap-1 select-none">
+              <span className="group-open:rotate-90 transition-transform">▶</span> Mensaje
+            </summary>
+            <div className="mt-2 p-3 bg-muted/50 rounded-lg text-sm whitespace-pre-wrap max-h-40 overflow-y-auto">
+              {campaign.message || "Sin mensaje"}
+            </div>
+          </details>
+
+          {/* PDF if attached */}
+          {campaign.pdf_name && (
+            <div className="p-2 bg-muted/30 rounded-lg text-sm flex items-center gap-2">
+              <FileText className="w-4 h-4 shrink-0" />
+              <span className="truncate">{campaign.pdf_name}</span>
+              {campaign.pdf_url && (
+                <a href={campaign.pdf_url} target="_blank" rel="noreferrer" className="text-primary underline text-xs ml-auto shrink-0">
+                  Ver PDF
+                </a>
+              )}
+            </div>
+          )}
+
+          {/* Contacts Table - takes remaining space */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
               <label className="text-sm font-medium">Contactos ({contacts?.length || 0})</label>
-              {contactsLoading ? <Skeleton className="h-32 mt-2" /> : contacts?.length ? (
-                <div className="border rounded-lg overflow-hidden max-h-72 overflow-y-auto mt-2">
+              {contacts && contacts.length > 0 && (
+                <div className="flex gap-2 text-xs">
+                  <span className="text-green-600">{sentContacts.length} enviados</span>
+                  {failedContacts.length > 0 && <span className="text-destructive">{failedContacts.length} fallidos</span>}
+                  {pendingContacts.length > 0 && <span className="text-muted-foreground">{pendingContacts.length} pendientes</span>}
+                </div>
+              )}
+            </div>
+            {contactsLoading ? <Skeleton className="h-32" /> : contacts?.length ? (
+              <div className="border rounded-lg overflow-hidden">
+                <div className="max-h-[40vh] overflow-y-auto">
                   <Table>
-                    <TableHeader>
+                    <TableHeader className="sticky top-0 bg-background z-10">
                       <TableRow>
-                        <TableHead>Nombre</TableHead>
-                        <TableHead>Teléfono</TableHead>
-                        <TableHead>Tienda</TableHead>
-                        <TableHead>Estado</TableHead>
+                        <TableHead className="w-[30%]">Nombre</TableHead>
+                        <TableHead className="w-[25%]">Teléfono</TableHead>
+                        <TableHead className="w-[20%]">Tienda</TableHead>
+                        <TableHead className="w-[25%]">Estado</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {contacts.map(c => (
                         <TableRow key={c.id}>
-                          <TableCell className="text-sm">{c.name || "—"}</TableCell>
-                          <TableCell className="text-sm font-mono">{c.phone}</TableCell>
-                          <TableCell className="text-sm">{c.store || "—"}</TableCell>
-                          <TableCell>
-                            {c.status === "sent" && <Badge variant="outline" className="text-green-600"><CheckCircle2 className="w-3 h-3 mr-1" />Enviado</Badge>}
-                            {c.status === "failed" && <Badge variant="destructive"><XCircle className="w-3 h-3 mr-1" />Fallido</Badge>}
-                            {c.status === "pending" && <Badge variant="secondary"><Clock className="w-3 h-3 mr-1" />Pendiente</Badge>}
+                          <TableCell className="text-sm py-2">{c.name || "—"}</TableCell>
+                          <TableCell className="text-sm font-mono py-2">{c.phone}</TableCell>
+                          <TableCell className="text-sm py-2">{c.store || "—"}</TableCell>
+                          <TableCell className="py-2">
+                            {c.status === "sent" && <Badge variant="outline" className="text-green-600 text-xs"><CheckCircle2 className="w-3 h-3 mr-1" />Enviado</Badge>}
+                            {c.status === "failed" && <Badge variant="destructive" className="text-xs"><XCircle className="w-3 h-3 mr-1" />Fallido</Badge>}
+                            {c.status === "pending" && <Badge variant="secondary" className="text-xs"><Clock className="w-3 h-3 mr-1" />Pendiente</Badge>}
                           </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
                   </Table>
                 </div>
-              ) : (
-                <Card className="py-6 mt-2"><CardContent className="text-center text-sm text-muted-foreground">
-                  Sin contactos
-                </CardContent></Card>
-              )}
-            </div>
-
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-4 border-t pt-4">
-              <div className="text-center">
-                <p className="text-2xl font-bold">{campaign.total_contacts}</p>
-                <p className="text-xs text-muted-foreground">Total</p>
               </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-green-600">{(campaign as any).sent_contacts || 0}</p>
-                <p className="text-xs text-muted-foreground">Enviados</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-destructive">{(campaign as any).failed_contacts || 0}</p>
-                <p className="text-xs text-muted-foreground">Fallidos</p>
-              </div>
-            </div>
+            ) : (
+              <Card className="py-6"><CardContent className="text-center text-sm text-muted-foreground">
+                Sin contactos
+              </CardContent></Card>
+            )}
           </div>
-        </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
   );
