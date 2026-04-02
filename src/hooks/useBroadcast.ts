@@ -12,6 +12,8 @@ export interface BroadcastCampaign {
   status: string;
   total_contacts: number;
   sent_count: number;
+  sent_contacts: number;
+  failed_contacts: number;
   completed_at: string | null;
   created_at: string;
 }

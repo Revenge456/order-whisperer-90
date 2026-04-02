@@ -121,10 +121,12 @@ export type Database = {
           completed_at: string | null
           content_type: string
           created_at: string | null
+          failed_contacts: number | null
           id: string
           message: string | null
           pdf_name: string | null
           pdf_url: string | null
+          sent_contacts: number | null
           sent_count: number | null
           status: string
           total_contacts: number | null
@@ -134,10 +136,12 @@ export type Database = {
           completed_at?: string | null
           content_type: string
           created_at?: string | null
+          failed_contacts?: number | null
           id?: string
           message?: string | null
           pdf_name?: string | null
           pdf_url?: string | null
+          sent_contacts?: number | null
           sent_count?: number | null
           status?: string
           total_contacts?: number | null
@@ -147,10 +151,12 @@ export type Database = {
           completed_at?: string | null
           content_type?: string
           created_at?: string | null
+          failed_contacts?: number | null
           id?: string
           message?: string | null
           pdf_name?: string | null
           pdf_url?: string | null
+          sent_contacts?: number | null
           sent_count?: number | null
           status?: string
           total_contacts?: number | null
@@ -161,6 +167,7 @@ export type Database = {
         Row: {
           campaign_id: string
           created_at: string | null
+          error_message: string | null
           id: string
           name: string | null
           phone: string
@@ -171,6 +178,7 @@ export type Database = {
         Insert: {
           campaign_id: string
           created_at?: string | null
+          error_message?: string | null
           id?: string
           name?: string | null
           phone: string
@@ -181,6 +189,7 @@ export type Database = {
         Update: {
           campaign_id?: string
           created_at?: string | null
+          error_message?: string | null
           id?: string
           name?: string | null
           phone?: string

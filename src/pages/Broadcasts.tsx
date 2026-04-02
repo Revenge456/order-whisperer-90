@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,14 +12,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Progress } from "@/components/ui/progress";
 import {
-  Plus, Upload, Send, Trash2, FileText, Users, CheckCircle2, XCircle, Clock, X, Info
+  Plus, Upload, Send, Trash2, FileText, Users, CheckCircle2, XCircle, Clock, X, Info, Loader2
 } from "lucide-react";
 import {
   useCampaigns, useCampaignContacts,
   useCreateCampaign, useImportContacts, useDeleteCampaign,
   type BroadcastCampaign,
 } from "@/hooks/useBroadcast";
+import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -29,19 +31,24 @@ const AVAILABLE_VARIABLES = [
   { key: "{tienda}", desc: "Tienda del contacto" },
 ];
 
-const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  pending: { label: "Pendiente", variant: "secondary" },
-  sending: { label: "Enviando", variant: "default" },
-  completed: { label: "Completada", variant: "outline" },
-  failed: { label: "Fallida", variant: "destructive" },
-};
-
-const DEFAULT_WEBHOOK_URL = "https://n8n.groupquimera.com/webhook-test/broadcast-campaign";
+const WEBHOOK_URL = "https://n8n.groupquimera.com/webhook/broadcast-campaign";
 
 export default function Broadcasts() {
   const { data: campaigns, isLoading } = useCampaigns();
   const [selectedCampaign, setSelectedCampaign] = useState<BroadcastCampaign | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+
+  // Poll for active campaigns
+  const queryClient = useQueryClient();
+  const hasActiveCampaigns = campaigns?.some(c => c.status === 'sending');
+
+  useEffect(() => {
+    if (!hasActiveCampaigns) return;
+    const interval = setInterval(() => {
+      queryClient.invalidateQueries({ queryKey: ['broadcast-campaigns'] });
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [hasActiveCampaigns, queryClient]);
 
   return (
     <DashboardLayout>
@@ -93,9 +100,64 @@ export default function Broadcasts() {
   );
 }
 
+function CampaignProgressBar({ campaign }: { campaign: BroadcastCampaign }) {
+  const total = campaign.total_contacts || 0;
+  const sent = (campaign as any).sent_contacts || 0;
+  const failed = (campaign as any).failed_contacts || 0;
+  const processed = sent + failed;
+  const percent = total > 0 ? Math.round((processed / total) * 100) : 0;
+
+  if (campaign.status === 'completed') {
+    return (
+      <div className="space-y-1">
+        <div className="flex items-center gap-2 text-green-600 text-sm font-medium">
+          <CheckCircle2 className="w-4 h-4" />
+          Campaña completada ✓
+        </div>
+        <div className="flex gap-3 text-xs text-muted-foreground">
+          <span className="text-green-600">{sent} enviados</span>
+          {failed > 0 && <span className="text-destructive">{failed} fallidos</span>}
+        </div>
+        <Progress value={100} className="h-2" />
+      </div>
+    );
+  }
+
+  if (campaign.status === 'sending') {
+    return (
+      <div className="space-y-1">
+        <div className="flex items-center gap-2 text-sm font-medium text-primary">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          Enviando: {processed} de {total} ({percent}%)
+        </div>
+        <Progress value={percent} className="h-2 [&>div]:transition-all [&>div]:duration-500" />
+      </div>
+    );
+  }
+
+  return null;
+}
+
 function CampaignCard({ campaign: c, onSelect }: { campaign: BroadcastCampaign; onSelect: () => void }) {
   const deleteCampaign = useDeleteCampaign();
-  const status = statusConfig[c.status] || statusConfig.pending;
+
+  const getStatusBadge = () => {
+    switch (c.status) {
+      case 'sending':
+        return <Badge className="bg-blue-500 text-white animate-pulse">Enviando</Badge>;
+      case 'completed':
+        return <Badge className="bg-green-500 text-white">Completada</Badge>;
+      case 'failed':
+        return <Badge variant="destructive">Fallida</Badge>;
+      default:
+        return <Badge variant="secondary">Borrador</Badge>;
+    }
+  };
+
+  const total = c.total_contacts || 0;
+  const sent = (c as any).sent_contacts || 0;
+  const failed = (c as any).failed_contacts || 0;
+  const processed = sent + failed;
 
   return (
     <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={onSelect}>
@@ -106,7 +168,7 @@ function CampaignCard({ campaign: c, onSelect }: { campaign: BroadcastCampaign; 
             {format(new Date(c.created_at), "dd MMM yyyy HH:mm", { locale: es })}
           </p>
         </div>
-        <Badge variant={status.variant}>{status.label}</Badge>
+        {getStatusBadge()}
       </CardHeader>
       <CardContent>
         <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
@@ -115,10 +177,27 @@ function CampaignCard({ campaign: c, onSelect }: { campaign: BroadcastCampaign; 
         {c.pdf_name && (
           <Badge variant="outline" className="text-xs mb-2">📄 {c.pdf_name}</Badge>
         )}
-        <div className="flex items-center gap-4 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" />{c.total_contacts}</span>
-          <span className="flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5 text-green-500" />{c.sent_count}</span>
-        </div>
+
+        {c.status === 'sending' && total > 0 && (
+          <div className="mb-2">
+            <div className="flex items-center gap-2 text-xs text-primary font-medium mb-1">
+              <Loader2 className="w-3 h-3 animate-spin" />
+              {processed}/{total} enviados
+            </div>
+            <Progress value={total > 0 ? (processed / total) * 100 : 0} className="h-1.5" />
+          </div>
+        )}
+
+        {c.status !== 'sending' && (
+          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" />{total}</span>
+            <span className="flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5 text-green-500" />{sent}</span>
+            {failed > 0 && (
+              <span className="flex items-center gap-1"><XCircle className="w-3.5 h-3.5 text-destructive" />{failed}</span>
+            )}
+          </div>
+        )}
+
         <div className="flex justify-end mt-2">
           <Button
             size="sm" variant="ghost"
@@ -239,7 +318,7 @@ function CreateCampaignForm({ onCreated }: { onCreated: () => void }) {
         pdfName = pdfFile.name;
       }
 
-      // 2. Create campaign in DB
+      // 2. Create campaign in DB with all data
       const campaign = await createCampaign.mutateAsync({
         campaign_name: name.trim(),
         content_type: 'text',
@@ -248,39 +327,27 @@ function CreateCampaignForm({ onCreated }: { onCreated: () => void }) {
         pdf_name: pdfName || undefined,
       });
 
-      // 3. Import contacts to DB
+      // 3. Import contacts to DB (each with status="pending")
       await importContacts.mutateAsync({ campaignId: campaign.id, contacts: parsedContacts });
 
-      // 4. Update campaign status to sending
+      // 4. Update campaign status to "sending"
       await supabase
         .from('broadcast_campaigns')
-        .update({ status: 'sending' })
+        .update({ status: 'sending', total_contacts: parsedContacts.length })
         .eq('id', campaign.id);
 
-      // 5. Trigger n8n webhook with ALL data
-      const webhookPayload = {
-        campaign_id: campaign.id,
-        campaign_name: name.trim(),
-        content_type: 'text',
-        message: message.trim(),
-        pdf_url: pdfUrl,
-        pdf_name: pdfName,
-        contacts: parsedContacts.map(c => ({
-          phone: c.phone,
-          name: c.name || null,
-          store: c.store || null,
-        })),
-        total_contacts: parsedContacts.length,
-      };
-
-      await fetch(DEFAULT_WEBHOOK_URL, {
+      // 5. Trigger n8n webhook with ONLY campaign_id
+      const response = await fetch(WEBHOOK_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        mode: 'no-cors',
-        body: JSON.stringify(webhookPayload),
+        body: JSON.stringify({ campaign_id: campaign.id }),
       });
 
-      toast.success(`Campaña creada y enviada a n8n (${parsedContacts.length} contactos)`);
+      if (!response.ok) {
+        console.warn('Webhook response not ok:', response.status);
+      }
+
+      toast.success(`Campaña enviada (${parsedContacts.length} contactos)`);
       onCreated();
     } catch (err) {
       toast.error('Error: ' + (err instanceof Error ? err.message : 'Error desconocido'));
@@ -296,7 +363,7 @@ function CreateCampaignForm({ onCreated }: { onCreated: () => void }) {
         <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej: Promo Marzo 2026" />
       </div>
 
-      {/* Text Message - Always visible */}
+      {/* Text Message */}
       <div>
         <label className="text-sm font-medium">Mensaje</label>
         <Textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Hola {nombre}, te escribimos para..." rows={4} />
@@ -385,6 +452,17 @@ function CampaignDetail({ campaign, onClose }: {
   onClose: () => void;
 }) {
   const { data: contacts, isLoading: contactsLoading } = useCampaignContacts(campaign.id);
+  const queryClient = useQueryClient();
+
+  // Poll when sending
+  useEffect(() => {
+    if (campaign.status !== 'sending') return;
+    const interval = setInterval(() => {
+      queryClient.invalidateQueries({ queryKey: ['broadcast-campaigns'] });
+      queryClient.invalidateQueries({ queryKey: ['broadcast-contacts', campaign.id] });
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [campaign.status, campaign.id, queryClient]);
 
   return (
     <Dialog open onOpenChange={onClose}>
@@ -392,14 +470,18 @@ function CampaignDetail({ campaign, onClose }: {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {campaign.campaign_name}
-            <Badge variant={statusConfig[campaign.status]?.variant || "secondary"}>
-              {statusConfig[campaign.status]?.label || campaign.status}
-            </Badge>
+            {campaign.status === 'sending' && <Badge className="bg-blue-500 text-white animate-pulse">Enviando</Badge>}
+            {campaign.status === 'completed' && <Badge className="bg-green-500 text-white">Completada</Badge>}
+            {campaign.status === 'failed' && <Badge variant="destructive">Fallida</Badge>}
+            {campaign.status === 'pending' && <Badge variant="secondary">Borrador</Badge>}
           </DialogTitle>
         </DialogHeader>
 
         <ScrollArea className="flex-1 pr-4">
           <div className="space-y-6">
+            {/* Progress Bar */}
+            <CampaignProgressBar campaign={campaign} />
+
             {/* Message */}
             <div>
               <label className="text-sm font-medium">Mensaje</label>
@@ -462,14 +544,18 @@ function CampaignDetail({ campaign, onClose }: {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-2 gap-4 border-t pt-4">
+            <div className="grid grid-cols-3 gap-4 border-t pt-4">
               <div className="text-center">
                 <p className="text-2xl font-bold">{campaign.total_contacts}</p>
                 <p className="text-xs text-muted-foreground">Total</p>
               </div>
               <div className="text-center">
-                <p className="text-2xl font-bold text-green-600">{campaign.sent_count}</p>
+                <p className="text-2xl font-bold text-green-600">{(campaign as any).sent_contacts || 0}</p>
                 <p className="text-xs text-muted-foreground">Enviados</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-destructive">{(campaign as any).failed_contacts || 0}</p>
+                <p className="text-xs text-muted-foreground">Fallidos</p>
               </div>
             </div>
           </div>
