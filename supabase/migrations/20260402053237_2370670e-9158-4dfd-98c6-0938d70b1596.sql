@@ -1,0 +1,2 @@
+ALTER TABLE public.broadcast_campaigns DROP CONSTRAINT IF EXISTS broadcast_campaigns_content_type_check;
+ALTER TABLE public.broadcast_campaigns ADD CONSTRAINT broadcast_campaigns_content_type_check CHECK (content_type IN ('text', 'text_and_pdf'));
