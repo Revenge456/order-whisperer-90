@@ -399,27 +399,29 @@ function CampaignDetail({ campaign, onClose }: {
 
         <ScrollArea className="flex-1 pr-4">
           <div className="space-y-6">
-            {/* Content */}
+            {/* Message */}
             <div>
-              <label className="text-sm font-medium">
-                {campaign.content_type === "text" ? "Mensaje" : "Documento PDF"}
-              </label>
+              <label className="text-sm font-medium">Mensaje</label>
               <div className="mt-1 p-3 bg-muted/50 rounded-lg text-sm whitespace-pre-wrap">
-                {campaign.content_type === "text"
-                  ? (campaign.message || "Sin mensaje")
-                  : (
-                    <div className="flex items-center gap-2">
-                      <FileText className="w-4 h-4" />
-                      <span>{campaign.pdf_name || "PDF"}</span>
-                      {campaign.pdf_url && (
-                        <a href={campaign.pdf_url} target="_blank" rel="noreferrer" className="text-primary underline text-xs">
-                          Ver PDF
-                        </a>
-                      )}
-                    </div>
-                  )}
+                {campaign.message || "Sin mensaje"}
               </div>
             </div>
+
+            {/* PDF if attached */}
+            {campaign.pdf_name && (
+              <div>
+                <label className="text-sm font-medium">PDF adjunto</label>
+                <div className="mt-1 p-3 bg-muted/50 rounded-lg text-sm flex items-center gap-2">
+                  <FileText className="w-4 h-4" />
+                  <span>{campaign.pdf_name}</span>
+                  {campaign.pdf_url && (
+                    <a href={campaign.pdf_url} target="_blank" rel="noreferrer" className="text-primary underline text-xs">
+                      Ver PDF
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Contacts */}
             <div>
