@@ -15,6 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useProducts, useProductCategories, useLowStockProducts, useUpdateProduct, useDeleteProduct } from "@/hooks/useProducts";
 import { filterBySearch } from "@/lib/search-utils";
 import { ProductModal } from "@/components/modals/ProductModal";
+import { ProductImageLightbox } from "@/components/products/ProductImageLightbox";
 import { DynamicTable, RecordDetailSheet } from "@/components/dynamic-table";
 import { useColumnDefinitions } from "@/hooks/useColumnDefinitions";
 import { useIsAdmin } from "@/hooks/useAuth";
@@ -30,6 +31,7 @@ export default function Products() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<Product | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState<{ url: string; name: string } | null>(null);
 
   const { data: products, isLoading } = useProducts();
   const { data: categories } = useProductCategories();
