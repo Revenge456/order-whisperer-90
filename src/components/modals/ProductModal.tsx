@@ -109,9 +109,9 @@ export function ProductModal({ open, onOpenChange, product }: ProductModalProps)
         await updateProduct.mutateAsync({
           id: product.id,
           ...productData,
-        });
+        } as any);
       } else {
-        await createProduct.mutateAsync(productData);
+        await createProduct.mutateAsync(productData as any);
       }
       onOpenChange(false);
     } catch (error) {
