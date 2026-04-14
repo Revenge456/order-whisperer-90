@@ -70,7 +70,7 @@ export default function Products() {
   const handleSave = async (updates: Partial<Record<string, unknown>>) => {
     if (!selectedRecord) return;
     // Only send valid product table fields
-    const validFields = ['name', 'description', 'price', 'stock', 'low_stock_threshold', 'category_id', 'is_active', 'image_url', 'custom_fields'];
+    const validFields = ['name', 'description', 'price', 'stock', 'low_stock_threshold', 'category_id', 'is_active', 'image_url', 'photo_id', 'custom_fields'];
     const filtered: Record<string, unknown> = {};
     for (const key of validFields) {
       if (key in updates) {
