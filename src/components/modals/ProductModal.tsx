@@ -137,6 +137,15 @@ export function ProductModal({ open, onOpenChange, product }: ProductModalProps)
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
+            <ProductImageUpload
+              imageUrl={formData.image_url}
+              productId={product?.id}
+              onImageChange={(url, resetPhotoId) => {
+                setFormData(prev => ({ ...prev, image_url: url }));
+                if (resetPhotoId) setShouldResetPhotoId(true);
+              }}
+            />
+
             <div className="grid gap-2">
               <Label htmlFor="name">Nombre *</Label>
               <Input
