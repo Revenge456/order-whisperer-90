@@ -23,6 +23,7 @@ import {
 import { Loader2 } from 'lucide-react';
 import { useCreateProduct, useUpdateProduct, useProductCategories } from '@/hooks/useProducts';
 import { CustomFieldsManager } from '@/components/ui/custom-fields';
+import { ProductImageUpload } from '@/components/products/ProductImageUpload';
 import type { Tables } from '@/integrations/supabase/types';
 
 type Product = Tables<'products'>;
@@ -47,6 +48,7 @@ export function ProductModal({ open, onOpenChange, product }: ProductModalProps)
     low_stock_threshold: '5',
     category_id: '',
     is_active: true,
+    image_url: '' as string | null,
     custom_fields: {} as Record<string, string | number | boolean>,
   });
 
@@ -60,6 +62,7 @@ export function ProductModal({ open, onOpenChange, product }: ProductModalProps)
         low_stock_threshold: product.low_stock_threshold?.toString() || '5',
         category_id: product.category_id || '',
         is_active: product.is_active ?? true,
+        image_url: product.image_url || null,
         custom_fields: (product as any).custom_fields || {},
       });
     } else {
@@ -71,6 +74,7 @@ export function ProductModal({ open, onOpenChange, product }: ProductModalProps)
         low_stock_threshold: '5',
         category_id: '',
         is_active: true,
+        image_url: null,
         custom_fields: {},
       });
     }
