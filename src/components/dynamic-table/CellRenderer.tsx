@@ -20,6 +20,14 @@ const colorClasses: Record<string, string> = {
 
 export function CellRenderer({ value, column }: CellRendererProps) {
   if (value === null || value === undefined || value === '') {
+    // Show placeholder for image columns
+    if (column.column_key === 'image_url') {
+      return (
+        <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center border border-border">
+          <FileText className="w-5 h-5 text-muted-foreground" />
+        </div>
+      );
+    }
     return <span className="text-muted-foreground text-sm">—</span>;
   }
 
