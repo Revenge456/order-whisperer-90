@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Label } from "@/components/ui/label";
 import { Plus, Search, Package, AlertTriangle } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,7 @@ import { useProducts, useProductCategories, useLowStockProducts, useUpdateProduc
 import { filterBySearch } from "@/lib/search-utils";
 import { ProductModal } from "@/components/modals/ProductModal";
 import { ProductImageLightbox } from "@/components/products/ProductImageLightbox";
+import { ProductImageUpload } from "@/components/products/ProductImageUpload";
 import { DynamicTable, RecordDetailSheet } from "@/components/dynamic-table";
 import { useColumnDefinitions } from "@/hooks/useColumnDefinitions";
 import { useIsAdmin } from "@/hooks/useAuth";
@@ -67,9 +69,16 @@ export default function Products() {
     setIsDetailOpen(true);
   };
 
+  const handleImageChange = (url: string | null, resetPhotoId: boolean) => {
+    if (!selectedRecord) return;
+    const updates: Record<string, unknown> = { image_url: url };
+    if (resetPhotoId) updates.photo_id = null;
+    handleSave(updates);
+    setSelectedRecord(prev => prev ? { ...prev, image_url: url, photo_id: resetPhotoId ? null : prev.photo_id } : null);
+  };
+
   const handleSave = async (updates: Partial<Record<string, unknown>>) => {
     if (!selectedRecord) return;
-    // Only send valid product table fields
     const validFields = ['name', 'description', 'price', 'stock', 'low_stock_threshold', 'category_id', 'is_active', 'image_url', 'photo_id', 'custom_fields'];
     const filtered: Record<string, unknown> = {};
     for (const key of validFields) {
@@ -228,12 +237,26 @@ export default function Products() {
         open={isDetailOpen}
         onOpenChange={setIsDetailOpen}
         record={selectedRecord as unknown as Record<string, unknown>}
-        columns={columns || []}
+        columns={(columns || []).filter(c => c.column_key !== 'image_url')}
         title={selectedRecord?.name || 'Detalle de Producto'}
         onSave={handleSave}
         canEdit={isAdmin}
         canDelete={isAdmin}
         onDelete={handleDelete}
+        customContent={
+          selectedRecord && isAdmin ? (
+            <ProductImageUpload
+              imageUrl={selectedRecord.image_url}
+              productId={selectedRecord.id}
+              onImageChange={handleImageChange}
+            />
+          ) : selectedRecord?.image_url ? (
+            <div className="grid gap-2">
+              <Label>Imagen del producto</Label>
+              <img src={selectedRecord.image_url} alt={selectedRecord.name} className="w-full h-40 rounded-lg object-cover border border-border" />
+            </div>
+          ) : null
+        }
       />
 
       <ProductImageLightbox
