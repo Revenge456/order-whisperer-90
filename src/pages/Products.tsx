@@ -68,9 +68,16 @@ export default function Products() {
     setIsDetailOpen(true);
   };
 
+  const handleImageChange = (url: string | null, resetPhotoId: boolean) => {
+    if (!selectedRecord) return;
+    const updates: Record<string, unknown> = { image_url: url };
+    if (resetPhotoId) updates.photo_id = null;
+    handleSave(updates);
+    setSelectedRecord(prev => prev ? { ...prev, image_url: url, photo_id: resetPhotoId ? null : prev.photo_id } : null);
+  };
+
   const handleSave = async (updates: Partial<Record<string, unknown>>) => {
     if (!selectedRecord) return;
-    // Only send valid product table fields
     const validFields = ['name', 'description', 'price', 'stock', 'low_stock_threshold', 'category_id', 'is_active', 'image_url', 'photo_id', 'custom_fields'];
     const filtered: Record<string, unknown> = {};
     for (const key of validFields) {
