@@ -38,6 +38,7 @@ export function ProductModal({ open, onOpenChange, product }: ProductModalProps)
   const isEditing = !!product;
   const createProduct = useCreateProduct();
   const updateProduct = useUpdateProduct();
+  const [shouldResetPhotoId, setShouldResetPhotoId] = useState(false);
   const { data: categories } = useProductCategories();
 
   const [formData, setFormData] = useState({
