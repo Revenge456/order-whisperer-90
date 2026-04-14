@@ -88,7 +88,7 @@ export function ProductModal({ open, onOpenChange, product }: ProductModalProps)
       return;
     }
 
-    const productData = {
+    const productData: Record<string, unknown> = {
       name: formData.name,
       description: formData.description || null,
       price: parseFloat(formData.price),
@@ -96,8 +96,13 @@ export function ProductModal({ open, onOpenChange, product }: ProductModalProps)
       low_stock_threshold: parseInt(formData.low_stock_threshold) || 5,
       category_id: formData.category_id || null,
       is_active: formData.is_active,
+      image_url: formData.image_url || null,
       custom_fields: formData.custom_fields,
     };
+
+    if (shouldResetPhotoId) {
+      productData.photo_id = null;
+    }
 
     try {
       if (isEditing && product) {
