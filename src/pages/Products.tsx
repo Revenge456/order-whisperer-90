@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Label } from "@/components/ui/label";
 import { Plus, Search, Package, AlertTriangle } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
