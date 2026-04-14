@@ -16,6 +16,7 @@ import { useProducts, useProductCategories, useLowStockProducts, useUpdateProduc
 import { filterBySearch } from "@/lib/search-utils";
 import { ProductModal } from "@/components/modals/ProductModal";
 import { ProductImageLightbox } from "@/components/products/ProductImageLightbox";
+import { ProductImageUpload } from "@/components/products/ProductImageUpload";
 import { DynamicTable, RecordDetailSheet } from "@/components/dynamic-table";
 import { useColumnDefinitions } from "@/hooks/useColumnDefinitions";
 import { useIsAdmin } from "@/hooks/useAuth";
