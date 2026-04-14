@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 const MAX_SIZE = 2 * 1024 * 1024; // 2MB
-const BUCKET = 'Canal 1';
+const BUCKET = 'Product storage';
 const FOLDER = 'productos';
 
 interface ProductImageUploadProps {
