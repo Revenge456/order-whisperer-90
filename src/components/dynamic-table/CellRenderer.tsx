@@ -20,6 +20,14 @@ const colorClasses: Record<string, string> = {
 
 export function CellRenderer({ value, column }: CellRendererProps) {
   if (value === null || value === undefined || value === '') {
+    // Show placeholder for image columns
+    if (column.column_key === 'image_url') {
+      return (
+        <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center border border-border">
+          <FileText className="w-5 h-5 text-muted-foreground" />
+        </div>
+      );
+    }
     return <span className="text-muted-foreground text-sm">—</span>;
   }
 
@@ -131,6 +139,29 @@ export function CellRenderer({ value, column }: CellRendererProps) {
       );
 
     case 'file':
+      // Special rendering for image_url column - show thumbnail
+      if (column.column_key === 'image_url') {
+        return (
+          <div
+            className="w-12 h-12 rounded-lg overflow-hidden bg-muted flex items-center justify-center border border-border cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
+            onClick={(e) => {
+              e.stopPropagation();
+              window.dispatchEvent(new CustomEvent('product-image-lightbox', { detail: { url: String(value) } }));
+            }}
+          >
+            <img
+              src={String(value)}
+              alt=""
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+                (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+              }}
+            />
+            <FileText className="w-5 h-5 text-muted-foreground hidden" />
+          </div>
+        );
+      }
       return (
         <a 
           href={String(value)} 

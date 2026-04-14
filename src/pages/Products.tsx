@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Search, Package, AlertTriangle } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useProducts, useProductCategories, useLowStockProducts, useUpdateProduct, useDeleteProduct } from "@/hooks/useProducts";
 import { filterBySearch } from "@/lib/search-utils";
 import { ProductModal } from "@/components/modals/ProductModal";
+import { ProductImageLightbox } from "@/components/products/ProductImageLightbox";
 import { DynamicTable, RecordDetailSheet } from "@/components/dynamic-table";
 import { useColumnDefinitions } from "@/hooks/useColumnDefinitions";
 import { useIsAdmin } from "@/hooks/useAuth";
@@ -30,6 +31,7 @@ export default function Products() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<Product | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState<{ url: string; name: string } | null>(null);
 
   const { data: products, isLoading } = useProducts();
   const { data: categories } = useProductCategories();
@@ -38,6 +40,16 @@ export default function Products() {
   const updateProduct = useUpdateProduct();
   const deleteProduct = useDeleteProduct();
   const isAdmin = useIsAdmin();
+
+  // Listen for lightbox events from CellRenderer
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.url) setLightboxImage({ url: detail.url, name: '' });
+    };
+    window.addEventListener('product-image-lightbox', handler);
+    return () => window.removeEventListener('product-image-lightbox', handler);
+  }, []);
 
   const filteredProducts = filterBySearch(
     products?.filter(p => categoryFilter === "all" || p.category_id === categoryFilter) || [],
@@ -58,7 +70,7 @@ export default function Products() {
   const handleSave = async (updates: Partial<Record<string, unknown>>) => {
     if (!selectedRecord) return;
     // Only send valid product table fields
-    const validFields = ['name', 'description', 'price', 'stock', 'low_stock_threshold', 'category_id', 'is_active', 'image_url', 'custom_fields'];
+    const validFields = ['name', 'description', 'price', 'stock', 'low_stock_threshold', 'category_id', 'is_active', 'image_url', 'photo_id', 'custom_fields'];
     const filtered: Record<string, unknown> = {};
     for (const key of validFields) {
       if (key in updates) {
@@ -222,6 +234,13 @@ export default function Products() {
         canEdit={isAdmin}
         canDelete={isAdmin}
         onDelete={handleDelete}
+      />
+
+      <ProductImageLightbox
+        open={!!lightboxImage}
+        onOpenChange={(open) => !open && setLightboxImage(null)}
+        imageUrl={lightboxImage?.url || ''}
+        productName={lightboxImage?.name}
       />
     </DashboardLayout>
   );

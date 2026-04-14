@@ -23,6 +23,7 @@ import {
 import { Loader2 } from 'lucide-react';
 import { useCreateProduct, useUpdateProduct, useProductCategories } from '@/hooks/useProducts';
 import { CustomFieldsManager } from '@/components/ui/custom-fields';
+import { ProductImageUpload } from '@/components/products/ProductImageUpload';
 import type { Tables } from '@/integrations/supabase/types';
 
 type Product = Tables<'products'>;
@@ -37,6 +38,7 @@ export function ProductModal({ open, onOpenChange, product }: ProductModalProps)
   const isEditing = !!product;
   const createProduct = useCreateProduct();
   const updateProduct = useUpdateProduct();
+  const [shouldResetPhotoId, setShouldResetPhotoId] = useState(false);
   const { data: categories } = useProductCategories();
 
   const [formData, setFormData] = useState({
@@ -47,6 +49,7 @@ export function ProductModal({ open, onOpenChange, product }: ProductModalProps)
     low_stock_threshold: '5',
     category_id: '',
     is_active: true,
+    image_url: '' as string | null,
     custom_fields: {} as Record<string, string | number | boolean>,
   });
 
@@ -60,6 +63,7 @@ export function ProductModal({ open, onOpenChange, product }: ProductModalProps)
         low_stock_threshold: product.low_stock_threshold?.toString() || '5',
         category_id: product.category_id || '',
         is_active: product.is_active ?? true,
+        image_url: product.image_url || null,
         custom_fields: (product as any).custom_fields || {},
       });
     } else {
@@ -71,6 +75,7 @@ export function ProductModal({ open, onOpenChange, product }: ProductModalProps)
         low_stock_threshold: '5',
         category_id: '',
         is_active: true,
+        image_url: null,
         custom_fields: {},
       });
     }
@@ -83,7 +88,7 @@ export function ProductModal({ open, onOpenChange, product }: ProductModalProps)
       return;
     }
 
-    const productData = {
+    const productData: Record<string, unknown> = {
       name: formData.name,
       description: formData.description || null,
       price: parseFloat(formData.price),
@@ -91,17 +96,22 @@ export function ProductModal({ open, onOpenChange, product }: ProductModalProps)
       low_stock_threshold: parseInt(formData.low_stock_threshold) || 5,
       category_id: formData.category_id || null,
       is_active: formData.is_active,
+      image_url: formData.image_url || null,
       custom_fields: formData.custom_fields,
     };
+
+    if (shouldResetPhotoId) {
+      productData.photo_id = null;
+    }
 
     try {
       if (isEditing && product) {
         await updateProduct.mutateAsync({
           id: product.id,
           ...productData,
-        });
+        } as any);
       } else {
-        await createProduct.mutateAsync(productData);
+        await createProduct.mutateAsync(productData as any);
       }
       onOpenChange(false);
     } catch (error) {
@@ -127,6 +137,15 @@ export function ProductModal({ open, onOpenChange, product }: ProductModalProps)
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
+            <ProductImageUpload
+              imageUrl={formData.image_url}
+              productId={product?.id}
+              onImageChange={(url, resetPhotoId) => {
+                setFormData(prev => ({ ...prev, image_url: url }));
+                if (resetPhotoId) setShouldResetPhotoId(true);
+              }}
+            />
+
             <div className="grid gap-2">
               <Label htmlFor="name">Nombre *</Label>
               <Input
