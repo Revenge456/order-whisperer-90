@@ -236,12 +236,26 @@ export default function Products() {
         open={isDetailOpen}
         onOpenChange={setIsDetailOpen}
         record={selectedRecord as unknown as Record<string, unknown>}
-        columns={columns || []}
+        columns={(columns || []).filter(c => c.column_key !== 'image_url')}
         title={selectedRecord?.name || 'Detalle de Producto'}
         onSave={handleSave}
         canEdit={isAdmin}
         canDelete={isAdmin}
         onDelete={handleDelete}
+        customContent={
+          selectedRecord && isAdmin ? (
+            <ProductImageUpload
+              imageUrl={selectedRecord.image_url}
+              productId={selectedRecord.id}
+              onImageChange={handleImageChange}
+            />
+          ) : selectedRecord?.image_url ? (
+            <div className="grid gap-2">
+              <Label>Imagen del producto</Label>
+              <img src={selectedRecord.image_url} alt={selectedRecord.name} className="w-full h-40 rounded-lg object-cover border border-border" />
+            </div>
+          ) : null
+        }
       />
 
       <ProductImageLightbox
