@@ -134,7 +134,13 @@ export function CellRenderer({ value, column }: CellRendererProps) {
       // Special rendering for image_url column - show thumbnail
       if (column.column_key === 'image_url') {
         return (
-          <div className="w-12 h-12 rounded-lg overflow-hidden bg-muted flex items-center justify-center border border-border">
+          <div
+            className="w-12 h-12 rounded-lg overflow-hidden bg-muted flex items-center justify-center border border-border cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
+            onClick={(e) => {
+              e.stopPropagation();
+              window.dispatchEvent(new CustomEvent('product-image-lightbox', { detail: { url: String(value) } }));
+            }}
+          >
             <img
               src={String(value)}
               alt=""
