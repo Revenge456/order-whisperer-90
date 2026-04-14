@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Search, Package, AlertTriangle } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -40,6 +40,16 @@ export default function Products() {
   const updateProduct = useUpdateProduct();
   const deleteProduct = useDeleteProduct();
   const isAdmin = useIsAdmin();
+
+  // Listen for lightbox events from CellRenderer
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.url) setLightboxImage({ url: detail.url, name: '' });
+    };
+    window.addEventListener('product-image-lightbox', handler);
+    return () => window.removeEventListener('product-image-lightbox', handler);
+  }, []);
 
   const filteredProducts = filterBySearch(
     products?.filter(p => categoryFilter === "all" || p.category_id === categoryFilter) || [],
@@ -224,6 +234,13 @@ export default function Products() {
         canEdit={isAdmin}
         canDelete={isAdmin}
         onDelete={handleDelete}
+      />
+
+      <ProductImageLightbox
+        open={!!lightboxImage}
+        onOpenChange={(open) => !open && setLightboxImage(null)}
+        imageUrl={lightboxImage?.url || ''}
+        productName={lightboxImage?.name}
       />
     </DashboardLayout>
   );
