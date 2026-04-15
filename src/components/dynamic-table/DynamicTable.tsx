@@ -140,22 +140,35 @@ export function DynamicTable<T extends Record<string, unknown>>({
           <Table>
             <TableHeader>
               <TableRow className="border-border/50 bg-muted/30">
-                {visibleColumns.map((column) => (
-                  <TableHead 
-                    key={column.id}
-                    style={{ width: column.column_width || undefined }}
-                  >
-                    <ColumnHeader
-                      column={column}
-                      isAdmin={isAdmin}
-                      onEdit={() => handleEditColumn(column)}
-                      onToggleVisibility={() => handleToggleVisibility(column)}
-                      onDelete={() => handleDeleteColumn(column)}
-                    />
-                  </TableHead>
-                ))}
-                <TableHead className="w-[60px]">
-                  {/* Actions column */}
+                {visibleColumns.map((column) => {
+                  // Special fixed widths for certain columns
+                  let width = column.column_width || undefined;
+                  let className = '';
+                  if (column.column_key === 'image_url') {
+                    width = 60;
+                    className = 'px-2';
+                  } else if (column.column_key === 'price' || column.column_key === 'total') {
+                    className = 'text-right';
+                  } else if (column.column_key === 'stock' || column.column_key === 'low_stock_threshold') {
+                    className = 'text-center';
+                  }
+                  return (
+                    <TableHead 
+                      key={column.id}
+                      style={{ width }}
+                      className={className}
+                    >
+                      <ColumnHeader
+                        column={column}
+                        isAdmin={isAdmin}
+                        onEdit={() => handleEditColumn(column)}
+                        onToggleVisibility={() => handleToggleVisibility(column)}
+                        onDelete={() => handleDeleteColumn(column)}
+                      />
+                    </TableHead>
+                  );
+                })}
+                <TableHead className="w-[40px]">
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -179,15 +192,21 @@ export function DynamicTable<T extends Record<string, unknown>>({
                     )}
                     onClick={() => onRowClick?.(row)}
                   >
-                    {visibleColumns.map((column) => (
-                      <TableCell key={column.id}>
-                        <CellRenderer 
-                          value={getValue(row, column.column_key)} 
-                          column={column} 
-                        />
-                      </TableCell>
-                    ))}
-                    <TableCell onClick={(e) => e.stopPropagation()}>
+                    {visibleColumns.map((column) => {
+                      let cellClassName = 'py-2';
+                      if (column.column_key === 'image_url') cellClassName = 'py-1.5 px-2';
+                      else if (column.column_key === 'price' || column.column_key === 'total') cellClassName = 'py-2 text-right';
+                      else if (column.column_key === 'stock' || column.column_key === 'low_stock_threshold') cellClassName = 'py-2 text-center';
+                      return (
+                        <TableCell key={column.id} className={cellClassName}>
+                          <CellRenderer 
+                            value={getValue(row, column.column_key)} 
+                            column={column} 
+                          />
+                        </TableCell>
+                      );
+                    })}
+                    <TableCell className="py-2" onClick={(e) => e.stopPropagation()}>
                       {customActions?.(row)}
                     </TableCell>
                   </TableRow>
