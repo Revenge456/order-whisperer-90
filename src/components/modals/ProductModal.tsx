@@ -84,7 +84,7 @@ export function ProductModal({ open, onOpenChange, product }: ProductModalProps)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.name.trim() || !formData.price) {
+    if (!formData.name.trim() || formData.price === '') {
       return;
     }
 
