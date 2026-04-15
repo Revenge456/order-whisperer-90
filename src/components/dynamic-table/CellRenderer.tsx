@@ -1,7 +1,8 @@
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
-import { Phone, Mail, Link, Check, X, Calendar, FileText, Bot, User } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Phone, Mail, Link, Check, X, Calendar, FileText, Bot, User, ImageIcon } from 'lucide-react';
 import type { ColumnDefinition, ColumnOption } from '@/hooks/useColumnDefinitions';
 import { cn } from '@/lib/utils';
 
@@ -23,8 +24,8 @@ export function CellRenderer({ value, column }: CellRendererProps) {
     // Show placeholder for image columns
     if (column.column_key === 'image_url') {
       return (
-        <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center border border-border">
-          <FileText className="w-5 h-5 text-muted-foreground" />
+        <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center border border-border flex-shrink-0">
+          <ImageIcon className="w-4 h-4 text-muted-foreground" />
         </div>
       );
     }
@@ -33,35 +34,54 @@ export function CellRenderer({ value, column }: CellRendererProps) {
 
   switch (column.column_type) {
     case 'text':
-      return <span className="text-foreground">{String(value)}</span>;
+      // Truncate description with tooltip
+      if (column.column_key === 'description' || column.column_key === 'notes') {
+        const text = String(value);
+        if (text.length > 60) {
+          return (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="text-foreground text-sm line-clamp-2 max-w-[200px] block">{text}</span>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-xs whitespace-pre-wrap">
+                  {text}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          );
+        }
+        return <span className="text-foreground text-sm line-clamp-2 max-w-[200px] block">{text}</span>;
+      }
+      return <span className="text-foreground text-sm">{String(value)}</span>;
 
     case 'number':
       const num = typeof value === 'number' ? value : parseFloat(String(value));
       if (column.column_key === 'total_spent' || column.column_key === 'total' || column.column_key === 'price') {
-        return <span className="font-medium text-success">Bs. {num.toLocaleString()}</span>;
+        return <span className="font-medium text-success text-sm whitespace-nowrap">Bs. {num.toLocaleString()}</span>;
       }
-      return <span className="font-medium text-foreground">{num.toLocaleString()}</span>;
+      return <span className="font-medium text-foreground text-sm">{num.toLocaleString()}</span>;
 
     case 'date':
       try {
         const date = new Date(String(value));
         return (
-          <span className="text-muted-foreground flex items-center gap-1.5 text-sm">
+          <span className="text-muted-foreground flex items-center gap-1.5 text-xs whitespace-nowrap">
             <Calendar className="w-3 h-3" />
             {format(date, 'dd MMM yyyy', { locale: es })}
           </span>
         );
       } catch {
-        return <span className="text-foreground">{String(value)}</span>;
+        return <span className="text-foreground text-sm">{String(value)}</span>;
       }
 
     case 'boolean':
       return value ? (
-        <Badge variant="outline" className={colorClasses.success}>
+        <Badge variant="outline" className={cn(colorClasses.success, 'text-xs')}>
           <Check className="w-3 h-3 mr-1" /> Sí
         </Badge>
       ) : (
-        <Badge variant="outline" className={colorClasses.muted}>
+        <Badge variant="outline" className={cn(colorClasses.muted, 'text-xs')}>
           <X className="w-3 h-3 mr-1" /> No
         </Badge>
       );
@@ -73,19 +93,18 @@ export function CellRenderer({ value, column }: CellRendererProps) {
       if (option) {
         const colorClass = option.color ? colorClasses[option.color] || colorClasses.muted : colorClasses.muted;
         
-        // Special icon for AI mode
         if (column.column_key === 'conversation_mode') {
           return (
-            <Badge variant="outline" className={cn(colorClass, 'gap-1')}>
+            <Badge variant="outline" className={cn(colorClass, 'gap-1 text-xs')}>
               {stringValue === 'ai' ? <Bot className="w-3 h-3" /> : <User className="w-3 h-3" />}
               {option.label}
             </Badge>
           );
         }
         
-        return <Badge variant="outline" className={colorClass}>{option.label}</Badge>;
+        return <Badge variant="outline" className={cn(colorClass, 'text-xs')}>{option.label}</Badge>;
       }
-      return <Badge variant="outline" className={colorClasses.muted}>{stringValue}</Badge>;
+      return <Badge variant="outline" className={cn(colorClasses.muted, 'text-xs')}>{stringValue}</Badge>;
 
     case 'multi_select':
       const values = Array.isArray(value) ? value : [value];
@@ -95,7 +114,7 @@ export function CellRenderer({ value, column }: CellRendererProps) {
             const opt = column.options?.find(o => o.value === String(v));
             const cls = opt?.color ? colorClasses[opt.color] || colorClasses.muted : colorClasses.muted;
             return (
-              <Badge key={i} variant="outline" className={cls}>
+              <Badge key={i} variant="outline" className={cn(cls, 'text-xs')}>
                 {opt?.label || String(v)}
               </Badge>
             );
@@ -116,9 +135,8 @@ export function CellRenderer({ value, column }: CellRendererProps) {
       );
 
     case 'phone':
-      const phone = String(value).replace(/[^0-9+]/g, '');
       return (
-        <span className="text-foreground flex items-center gap-1.5">
+        <span className="text-foreground flex items-center gap-1.5 text-sm">
           <Phone className="w-3 h-3 text-muted-foreground" />
           {String(value)}
         </span>
@@ -139,11 +157,10 @@ export function CellRenderer({ value, column }: CellRendererProps) {
       );
 
     case 'file':
-      // Special rendering for image_url column - show thumbnail
       if (column.column_key === 'image_url') {
         return (
           <div
-            className="w-12 h-12 rounded-lg overflow-hidden bg-muted flex items-center justify-center border border-border cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
+            className="w-10 h-10 rounded-md overflow-hidden bg-muted flex items-center justify-center border border-border cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all flex-shrink-0"
             onClick={(e) => {
               e.stopPropagation();
               window.dispatchEvent(new CustomEvent('product-image-lightbox', { detail: { url: String(value) } }));
@@ -158,7 +175,7 @@ export function CellRenderer({ value, column }: CellRendererProps) {
                 (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
               }}
             />
-            <FileText className="w-5 h-5 text-muted-foreground hidden" />
+            <ImageIcon className="w-4 h-4 text-muted-foreground hidden" />
           </div>
         );
       }
@@ -176,6 +193,6 @@ export function CellRenderer({ value, column }: CellRendererProps) {
       );
 
     default:
-      return <span className="text-foreground">{String(value)}</span>;
+      return <span className="text-foreground text-sm">{String(value)}</span>;
   }
 }
