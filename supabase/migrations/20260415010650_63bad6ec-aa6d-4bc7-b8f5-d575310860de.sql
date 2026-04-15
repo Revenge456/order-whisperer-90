@@ -1,0 +1,1 @@
+UPDATE table_column_definitions SET is_visible = false WHERE module_key = 'products' AND column_key = 'code';
