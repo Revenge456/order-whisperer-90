@@ -11,6 +11,8 @@ export interface ChatMessage {
   is_automated: boolean;
   ai_agent_phase: string | null;
   created_at: string;
+  media_url: string | null;
+  media_type: string | null;
 }
 
 export interface ChatSummary {

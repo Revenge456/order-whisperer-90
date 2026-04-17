@@ -396,6 +396,24 @@ export type Database = {
         }
         Relationships: []
       }
+      n8n_chat_histories: {
+        Row: {
+          id: number
+          message: Json
+          session_id: string
+        }
+        Insert: {
+          id?: number
+          message: Json
+          session_id: string
+        }
+        Update: {
+          id?: number
+          message?: Json
+          session_id?: string
+        }
+        Relationships: []
+      }
       order_items: {
         Row: {
           created_at: string | null
@@ -764,6 +782,30 @@ export type Database = {
         }
         Relationships: []
       }
+      sent_product_photos_log: {
+        Row: {
+          category_name: string
+          id: string
+          products_count: number
+          sent_at: string
+          user_id: string
+        }
+        Insert: {
+          category_name: string
+          id?: string
+          products_count?: number
+          sent_at?: string
+          user_id: string
+        }
+        Update: {
+          category_name?: string
+          id?: string
+          products_count?: number
+          sent_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       stock_movements: {
         Row: {
           created_at: string | null
@@ -1065,6 +1107,45 @@ export type Database = {
         }
         Relationships: []
       }
+      tool_execution_log: {
+        Row: {
+          duration_ms: number | null
+          error_message: string | null
+          executed_at: string
+          id: string
+          items_returned: number | null
+          status: string
+          tool_input: Json | null
+          tool_name: string
+          user_id: string | null
+          user_message: string | null
+        }
+        Insert: {
+          duration_ms?: number | null
+          error_message?: string | null
+          executed_at?: string
+          id?: string
+          items_returned?: number | null
+          status: string
+          tool_input?: Json | null
+          tool_name: string
+          user_id?: string | null
+          user_message?: string | null
+        }
+        Update: {
+          duration_ms?: number | null
+          error_message?: string | null
+          executed_at?: string
+          id?: string
+          items_returned?: number | null
+          status?: string
+          tool_input?: Json | null
+          tool_name?: string
+          user_id?: string | null
+          user_message?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -1130,6 +1211,8 @@ export type Database = {
           customer_id: string
           id: string
           is_automated: boolean | null
+          media_type: string | null
+          media_url: string | null
           message_type: string
         }
         Insert: {
@@ -1139,6 +1222,8 @@ export type Database = {
           customer_id: string
           id?: string
           is_automated?: boolean | null
+          media_type?: string | null
+          media_url?: string | null
           message_type: string
         }
         Update: {
@@ -1148,6 +1233,8 @@ export type Database = {
           customer_id?: string
           id?: string
           is_automated?: boolean | null
+          media_type?: string | null
+          media_url?: string | null
           message_type?: string
         }
         Relationships: [
