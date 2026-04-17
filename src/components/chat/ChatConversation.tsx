@@ -198,7 +198,30 @@ export function ChatConversation({
                           </Badge>
                         )}
                       </div>
-                      <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                      {msg.media_url && msg.media_type === 'image' && (
+                        <a href={msg.media_url} target="_blank" rel="noopener noreferrer" className="block mb-1.5">
+                          <img
+                            src={msg.media_url}
+                            alt={msg.content || 'Imagen'}
+                            className="rounded-lg max-w-full max-h-64 object-cover"
+                            loading="lazy"
+                          />
+                        </a>
+                      )}
+                      {msg.media_url && msg.media_type === 'video' && (
+                        <video
+                          src={msg.media_url}
+                          controls
+                          className="rounded-lg max-w-full max-h-64 mb-1.5"
+                          preload="metadata"
+                        />
+                      )}
+                      {msg.media_url && msg.media_type === 'audio' && (
+                        <audio src={msg.media_url} controls className="w-full mb-1.5" />
+                      )}
+                      {msg.content && (
+                        <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                      )}
                       <p className="text-[10px] text-muted-foreground mt-1 text-right">
                         {format(new Date(msg.created_at), 'HH:mm')}
                       </p>

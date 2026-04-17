@@ -44,7 +44,7 @@ export function useChatList(search: string, filterStatus: ChatFilter) {
       while (hasMore) {
         const { data, error } = await supabase
           .from("whatsapp_logs")
-          .select("id, customer_id, content, message_type, is_automated, ai_agent_phase, created_at")
+          .select("id, customer_id, content, message_type, is_automated, ai_agent_phase, created_at, media_url, media_type")
           .order("created_at", { ascending: false })
           .range(offset, offset + batchSize - 1);
         if (error) throw error;
@@ -139,7 +139,7 @@ export function useChatMessages(customerId: string | null) {
       if (!customerId) return [];
       const { data, error } = await supabase
         .from("whatsapp_logs")
-        .select("id, customer_id, content, message_type, is_automated, ai_agent_phase, created_at")
+        .select("id, customer_id, content, message_type, is_automated, ai_agent_phase, created_at, media_url, media_type")
         .eq("customer_id", customerId)
         .order("created_at", { ascending: true });
       if (error) throw error;
