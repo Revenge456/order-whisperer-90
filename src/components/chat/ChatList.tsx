@@ -18,6 +18,7 @@ interface ChatListProps {
   onSearchChange: (value: string) => void;
   filterStatus: ChatFilter;
   onFilterChange: (value: ChatFilter) => void;
+  totalCount?: number;
 }
 
 export function ChatList({
@@ -29,7 +30,9 @@ export function ChatList({
   onSearchChange,
   filterStatus,
   onFilterChange,
+  totalCount,
 }: ChatListProps) {
+  const badgeCount = totalCount ?? chats.length;
   return (
     <div className="flex flex-col h-full border-r border-border">
       {/* Header */}
@@ -38,7 +41,7 @@ export function ChatList({
           <h2 className="font-semibold text-foreground flex items-center gap-2">
             <MessageSquare className="w-5 h-5 text-primary" />
             Chats
-            <Badge variant="secondary" className="ml-1">{chats.length}</Badge>
+            <Badge variant="secondary" className="ml-1">{badgeCount}</Badge>
           </h2>
         </div>
         <div className="relative">

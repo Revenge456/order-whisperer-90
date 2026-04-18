@@ -28,7 +28,14 @@ export interface ChatSummary {
 
 export type ChatFilter = "all" | "ai" | "revision" | "buenos" | "ventas";
 
-export function useChatList(search: string, filterStatus: ChatFilter) {
+export interface ChatListResult {
+  data: ChatSummary[];
+  isLoading: boolean;
+  error: unknown;
+  totalCustomers: number;
+}
+
+export function useChatList(search: string, filterStatus: ChatFilter): ChatListResult {
   const {
     data: logs,
     isLoading: logsLoading,
@@ -61,16 +68,44 @@ export function useChatList(search: string, filterStatus: ChatFilter) {
     },
   });
 
-  const { data: customers, isLoading: customersLoading } = useQuery({
+  const { data: customersResult, isLoading: customersLoading } = useQuery({
     queryKey: ["chat-customers"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("customers")
-        .select("id, name, phone, conversation_mode, chat_status");
-      if (error) throw error;
-      return data;
+      const allCustomers: Array<{
+        id: string;
+        name: string | null;
+        phone: string;
+        conversation_mode: string | null;
+        chat_status: string | null;
+      }> = [];
+      const batchSize = 1000;
+      let offset = 0;
+      let hasMore = true;
+      let totalCount = 0;
+
+      while (hasMore) {
+        const { data, error, count } = await supabase
+          .from("customers")
+          .select("id, name, phone, conversation_mode, chat_status", { count: "exact" })
+          .order("updated_at", { ascending: false })
+          .range(offset, offset + batchSize - 1);
+        if (error) throw error;
+        if (count !== null && count !== undefined) totalCount = count;
+        if (data && data.length > 0) {
+          allCustomers.push(...(data as typeof allCustomers));
+          offset += batchSize;
+          hasMore = data.length === batchSize;
+        } else {
+          hasMore = false;
+        }
+      }
+
+      return { customers: allCustomers, totalCount };
     },
   });
+
+  const customers = customersResult?.customers;
+  const totalCustomers = customersResult?.totalCount ?? 0;
 
   const chatList = useMemo(() => {
     if (!logs || !customers) return [];
@@ -127,6 +162,7 @@ export function useChatList(search: string, filterStatus: ChatFilter) {
     data: chatList,
     isLoading: logsLoading || customersLoading,
     error: logsError,
+    totalCustomers,
   };
 }
 
