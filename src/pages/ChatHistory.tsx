@@ -10,7 +10,7 @@ export default function ChatHistory() {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<ChatFilter>('all');
 
-  const { data: chatList, isLoading: listLoading } = useChatList(search, filterStatus);
+  const { data: chatList, isLoading: listLoading, totalCustomers } = useChatList(search, filterStatus);
   const { data: messages = [], isLoading: messagesLoading } = useChatMessages(selectedCustomerId);
 
   const selectedChat = chatList.find(c => c.customer_id === selectedCustomerId);
@@ -29,6 +29,7 @@ export default function ChatHistory() {
             onSearchChange={setSearch}
             filterStatus={filterStatus}
             onFilterChange={setFilterStatus}
+            totalCount={totalCustomers}
           />
         </div>
 
