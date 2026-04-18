@@ -162,6 +162,7 @@ export function useChatList(search: string, filterStatus: ChatFilter): ChatListR
     data: chatList,
     isLoading: logsLoading || customersLoading,
     error: logsError,
+    totalCustomers,
   };
 }
 
