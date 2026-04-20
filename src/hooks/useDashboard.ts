@@ -5,9 +5,8 @@ export function useDashboardStats() {
   return useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: async () => {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const todayISO = today.toISOString();
+      // Last 24 hours window (rolling, not calendar day)
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
       // Fetch multiple stats in parallel
       const [
@@ -17,16 +16,17 @@ export function useDashboardStats() {
         lowStockResult,
         customersResult,
       ] = await Promise.all([
-        // Orders today
+        // Orders last 24h
         supabase
           .from('orders')
           .select('id, status, total, created_at')
-          .gte('created_at', todayISO),
+          .gte('created_at', since),
         
-        // Pending payments
+        // Pending payments — same source as bell notifications (payments table)
         supabase
-          .from('pending_payments_view')
-          .select('payment_id, amount'),
+          .from('payments')
+          .select('id, amount')
+          .eq('status', 'pendiente'),
         
         // Active deliveries
         supabase
