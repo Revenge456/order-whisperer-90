@@ -129,7 +129,7 @@ export function DynamicTable<T extends Record<string, unknown>>({
       )}
 
       {/* Table */}
-      <div className="rounded-lg border border-border overflow-x-auto">
+      <div className="rounded-lg border border-border w-full">
         {loading ? (
           <div className="p-4 space-y-3">
             {[...Array(5)].map((_, i) => (
@@ -193,10 +193,10 @@ export function DynamicTable<T extends Record<string, unknown>>({
                     onClick={() => onRowClick?.(row)}
                   >
                     {visibleColumns.map((column) => {
-                      let cellClassName = 'py-2';
+                      let cellClassName = 'py-2 truncate max-w-0';
                       if (column.column_key === 'image_url') cellClassName = 'py-1.5 px-2';
-                      else if (column.column_key === 'price' || column.column_key === 'total') cellClassName = 'py-2 text-right';
-                      else if (column.column_key === 'stock' || column.column_key === 'low_stock_threshold') cellClassName = 'py-2 text-center';
+                      else if (column.column_key === 'price' || column.column_key === 'total') cellClassName = 'py-2 text-right truncate max-w-0';
+                      else if (column.column_key === 'stock' || column.column_key === 'low_stock_threshold') cellClassName = 'py-2 text-center truncate max-w-0';
                       return (
                         <TableCell key={column.id} className={cellClassName}>
                           <CellRenderer 
