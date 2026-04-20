@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DynamicTable, RecordDetailSheet } from "@/components/dynamic-table";
-import { useCustomers, useUpdateCustomer } from "@/hooks/useCustomers";
+import { useCustomers, useUpdateCustomer, useCustomerCounts } from "@/hooks/useCustomers";
 import { useColumnDefinitions } from "@/hooks/useColumnDefinitions";
 import { useIsAdmin } from "@/hooks/useAuth";
 import { filterBySearch } from "@/lib/search-utils";
@@ -40,6 +40,7 @@ export default function Customers() {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   
   const { data: customers, isLoading } = useCustomers();
+  const { data: counts } = useCustomerCounts();
   const { data: columns = [] } = useColumnDefinitions('customers');
   const updateCustomer = useUpdateCustomer();
   const isAdmin = useIsAdmin();
@@ -109,7 +110,8 @@ export default function Customers() {
     toast.success('Archivo exportado exitosamente');
   };
 
-  const activeCustomers = customers?.filter(c => c.is_active).length || 0;
+  const totalCustomers = counts?.total ?? customers?.length ?? 0;
+  const activeCustomers = counts?.active ?? customers?.filter(c => c.is_active).length ?? 0;
 
   return (
     <DashboardLayout>
@@ -134,7 +136,7 @@ export default function Customers() {
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">Total Clientes</p>
               <p className="text-2xl font-bold text-foreground">
-                {isLoading ? <Skeleton className="h-8 w-16" /> : customers?.length || 0}
+                {isLoading && !counts ? <Skeleton className="h-8 w-16" /> : totalCustomers}
               </p>
             </CardContent>
           </Card>
@@ -142,7 +144,7 @@ export default function Customers() {
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">Clientes Activos</p>
               <p className="text-2xl font-bold text-success">
-                {isLoading ? <Skeleton className="h-8 w-16" /> : activeCustomers}
+                {isLoading && !counts ? <Skeleton className="h-8 w-16" /> : activeCustomers}
               </p>
             </CardContent>
           </Card>

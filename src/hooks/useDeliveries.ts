@@ -8,17 +8,28 @@ type DeliveryDriver = Tables<'delivery_drivers'>;
 type ActiveDeliveryView = Tables<'active_deliveries_view'>;
 type DeliveryStatus = Enums<'delivery_status'>;
 
+const BATCH_SIZE = 1000;
+
 export function useActiveDeliveries() {
   return useQuery({
     queryKey: ['active-deliveries'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('active_deliveries_view')
-        .select('*')
-        .order('assigned_at', { ascending: false });
+      const all: ActiveDeliveryView[] = [];
+      let offset = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from('active_deliveries_view')
+          .select('*')
+          .order('assigned_at', { ascending: false })
+          .range(offset, offset + BATCH_SIZE - 1);
 
-      if (error) throw error;
-      return data as ActiveDeliveryView[];
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        all.push(...(data as ActiveDeliveryView[]));
+        if (data.length < BATCH_SIZE) break;
+        offset += BATCH_SIZE;
+      }
+      return all;
     },
   });
 }
@@ -27,13 +38,22 @@ export function useAllDeliveries() {
   return useQuery({
     queryKey: ['deliveries'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('deliveries')
-        .select('*, orders(order_number, total, customers(name, phone, address))')
-        .order('created_at', { ascending: false });
+      const all: any[] = [];
+      let offset = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from('deliveries')
+          .select('*, orders(order_number, total, customers(name, phone, address))')
+          .order('created_at', { ascending: false })
+          .range(offset, offset + BATCH_SIZE - 1);
 
-      if (error) throw error;
-      return data;
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        all.push(...data);
+        if (data.length < BATCH_SIZE) break;
+        offset += BATCH_SIZE;
+      }
+      return all;
     },
   });
 }

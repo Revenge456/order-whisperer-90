@@ -8,17 +8,28 @@ type OrderCompleteView = Tables<'orders_complete_view'>;
 type OrderStatus = Enums<'order_status'>;
 type PaymentStatus = Enums<'payment_status'>;
 
+const BATCH_SIZE = 1000;
+
 export function useOrders() {
   return useQuery({
     queryKey: ['orders'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('orders_complete_view')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const all: OrderCompleteView[] = [];
+      let offset = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from('orders_complete_view')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .range(offset, offset + BATCH_SIZE - 1);
 
-      if (error) throw error;
-      return data as OrderCompleteView[];
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        all.push(...(data as OrderCompleteView[]));
+        if (data.length < BATCH_SIZE) break;
+        offset += BATCH_SIZE;
+      }
+      return all;
     },
   });
 }
@@ -123,13 +134,22 @@ export function usePendingPayments() {
   return useQuery({
     queryKey: ['pending-payments'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('pending_payments_view')
-        .select('*')
-        .order('created_at', { ascending: true });
+      const all: any[] = [];
+      let offset = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from('pending_payments_view')
+          .select('*')
+          .order('created_at', { ascending: true })
+          .range(offset, offset + BATCH_SIZE - 1);
 
-      if (error) throw error;
-      return data;
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        all.push(...data);
+        if (data.length < BATCH_SIZE) break;
+        offset += BATCH_SIZE;
+      }
+      return all;
     },
   });
 }
