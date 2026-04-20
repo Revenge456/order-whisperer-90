@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Search, MessageCircle, Download } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -13,13 +14,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DynamicTable, RecordDetailSheet } from "@/components/dynamic-table";
-import { useCustomers, useUpdateCustomer, useCustomerCounts } from "@/hooks/useCustomers";
+import { TablePagination } from "@/components/ui/table-pagination";
+import {
+  useCustomers,
+  useUpdateCustomer,
+  useCustomerCounts,
+  usePaginatedCustomers,
+} from "@/hooks/useCustomers";
 import { useColumnDefinitions } from "@/hooks/useColumnDefinitions";
 import { useIsAdmin } from "@/hooks/useAuth";
-import { filterBySearch } from "@/lib/search-utils";
 import type { Tables } from "@/integrations/supabase/types";
 import { toast } from "sonner";
-
 
 type Customer = Tables<'customers'>;
 
@@ -33,23 +38,87 @@ const canalOptions = [
   { value: 'otro', label: 'Otro' },
 ];
 
+const PAGE_SIZE_OPTIONS = [25, 50, 100];
+const DEFAULT_PAGE_SIZE = 50;
+
 export default function Customers() {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [canalFilter, setCanalFilter] = useState("all");
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // URL-persisted pagination state
+  const page = Math.max(1, Number(searchParams.get('page')) || 1);
+  const pageSize = (() => {
+    const ps = Number(searchParams.get('size')) || DEFAULT_PAGE_SIZE;
+    return PAGE_SIZE_OPTIONS.includes(ps) ? ps : DEFAULT_PAGE_SIZE;
+  })();
+
+  const [searchInput, setSearchInput] = useState(searchParams.get('q') ?? '');
+  const [debouncedSearch, setDebouncedSearch] = useState(searchInput);
+  const [canalFilter, setCanalFilter] = useState(searchParams.get('canal') ?? 'all');
+
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
-  
-  const { data: customers, isLoading } = useCustomers();
+
+  // Debounce search input (350ms)
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchInput), 350);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
+  // When search/canal changes → reset to page 1 and sync URL
+  useEffect(() => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('page', '1');
+      if (debouncedSearch) next.set('q', debouncedSearch); else next.delete('q');
+      if (canalFilter && canalFilter !== 'all') next.set('canal', canalFilter); else next.delete('canal');
+      return next;
+    }, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch, canalFilter]);
+
+  const updatePageInUrl = (nextPage: number) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('page', String(nextPage));
+      return next;
+    }, { replace: true });
+  };
+
+  const updatePageSizeInUrl = (nextSize: number) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('size', String(nextSize));
+      next.set('page', '1');
+      return next;
+    }, { replace: true });
+  };
+
   const { data: counts } = useCustomerCounts();
+  const { data: paginated, isLoading, isFetching } = usePaginatedCustomers({
+    page,
+    pageSize,
+    search: debouncedSearch,
+    canal: canalFilter,
+  });
   const { data: columns = [] } = useColumnDefinitions('customers');
   const updateCustomer = useUpdateCustomer();
   const isAdmin = useIsAdmin();
 
-  const filteredCustomers = filterBySearch(
-    (customers || []).filter(c => canalFilter === 'all' || c.canal === canalFilter),
-    searchTerm,
-    ['name', 'phone']
-  );
+  // For Excel export: fetch ALL customers (no pagination)
+  const { data: allCustomers, refetch: refetchAll, isFetching: isExporting } = useCustomers();
+
+  const rows = paginated?.rows ?? [];
+  const total = paginated?.total ?? 0;
+  const totalPages = paginated?.totalPages ?? 1;
+
+  // If current page > totalPages (e.g. after delete), snap back
+  useEffect(() => {
+    if (!paginated) return;
+    if (page > paginated.totalPages) {
+      updatePageInUrl(paginated.totalPages);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paginated?.totalPages]);
 
   const handleRowClick = (customer: Customer) => {
     setSelectedCustomer(customer);
@@ -70,20 +139,24 @@ export default function Customers() {
     }
     try {
       await updateCustomer.mutateAsync({ id: selectedCustomer.id, ...filtered });
-      toast.success('Cliente actualizado');
     } catch (error) {
       // Error handled by mutation
     }
   };
 
-  const handleExportExcel = () => {
-    if (!customers || customers.length === 0) {
+  const handleExportExcel = async () => {
+    let dataset = allCustomers;
+    if (!dataset || dataset.length === 0) {
+      const res = await refetchAll();
+      dataset = res.data;
+    }
+    if (!dataset || dataset.length === 0) {
       toast.error('No hay clientes para exportar');
       return;
     }
 
     const headers = ['Nombre', 'Teléfono', 'Email', 'Dirección', 'Canal', 'Activo', 'Total Pedidos', 'Total Gastado (Bs)', 'Notas', 'Creado'];
-    const rows = customers.map(c => [
+    const exportRows = dataset.map(c => [
       c.name || '',
       c.phone || '',
       c.email || '',
@@ -96,7 +169,7 @@ export default function Customers() {
       c.created_at ? new Date(c.created_at).toLocaleDateString('es-BO') : '',
     ]);
 
-    const csvContent = [headers, ...rows]
+    const csvContent = [headers, ...exportRows]
       .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
       .join('\n');
 
@@ -107,11 +180,11 @@ export default function Customers() {
     link.download = `clientes_${new Date().toISOString().slice(0, 10)}.csv`;
     link.click();
     URL.revokeObjectURL(url);
-    toast.success('Archivo exportado exitosamente');
+    toast.success(`Archivo exportado: ${dataset.length.toLocaleString('es-BO')} clientes`);
   };
 
-  const totalCustomers = counts?.total ?? customers?.length ?? 0;
-  const activeCustomers = counts?.active ?? customers?.filter(c => c.is_active).length ?? 0;
+  const totalCustomers = counts?.total ?? 0;
+  const activeCustomers = counts?.active ?? 0;
 
   return (
     <DashboardLayout>
@@ -123,9 +196,9 @@ export default function Customers() {
             <p className="text-muted-foreground mt-1">Gestiona tu base de clientes</p>
           </div>
           {isAdmin && (
-            <Button onClick={handleExportExcel} variant="outline" className="gap-2">
+            <Button onClick={handleExportExcel} variant="outline" className="gap-2" disabled={isExporting}>
               <Download className="w-4 h-4" />
-              Exportar a Excel
+              {isExporting ? 'Exportando…' : 'Exportar a Excel'}
             </Button>
           )}
         </div>
@@ -136,7 +209,7 @@ export default function Customers() {
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">Total Clientes</p>
               <p className="text-2xl font-bold text-foreground">
-                {isLoading && !counts ? <Skeleton className="h-8 w-16" /> : totalCustomers}
+                {!counts ? <Skeleton className="h-8 w-16" /> : totalCustomers.toLocaleString('es-BO')}
               </p>
             </CardContent>
           </Card>
@@ -144,7 +217,7 @@ export default function Customers() {
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">Clientes Activos</p>
               <p className="text-2xl font-bold text-success">
-                {isLoading && !counts ? <Skeleton className="h-8 w-16" /> : activeCustomers}
+                {!counts ? <Skeleton className="h-8 w-16" /> : activeCustomers.toLocaleString('es-BO')}
               </p>
             </CardContent>
           </Card>
@@ -158,8 +231,8 @@ export default function Customers() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   placeholder="Buscar por nombre o teléfono..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
                   className="pl-10 bg-secondary/50 border-border/50"
                 />
               </div>
@@ -182,17 +255,17 @@ export default function Customers() {
           <CardHeader>
             <CardTitle>Lista de Clientes</CardTitle>
             <CardDescription>
-              {filteredCustomers.length} cliente(s) encontrado(s) • Haz clic en una fila para ver detalles
+              {total.toLocaleString('es-BO')} cliente(s) encontrado(s) • Haz clic en una fila para ver detalles
             </CardDescription>
           </CardHeader>
           <CardContent>
             <DynamicTable
               moduleKey="customers"
-              data={filteredCustomers}
-              isLoading={isLoading}
+              data={rows}
+              isLoading={isLoading || isFetching}
               onRowClick={handleRowClick}
               getRowId={(row) => row.id}
-              emptyMessage={searchTerm ? 'No se encontraron clientes' : 'No hay clientes registrados'}
+              emptyMessage={debouncedSearch ? 'No se encontraron clientes' : 'No hay clientes registrados'}
               customActions={(row) => (
                 <div className="flex items-center gap-1">
                   <Button
@@ -206,6 +279,17 @@ export default function Customers() {
                   </Button>
                 </div>
               )}
+            />
+
+            <TablePagination
+              page={page}
+              pageSize={pageSize}
+              total={total}
+              totalPages={totalPages}
+              onPageChange={updatePageInUrl}
+              onPageSizeChange={updatePageSizeInUrl}
+              pageSizeOptions={PAGE_SIZE_OPTIONS}
+              itemLabel="clientes"
             />
           </CardContent>
         </Card>
