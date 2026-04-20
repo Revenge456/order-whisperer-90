@@ -410,7 +410,8 @@ export default function Orders() {
                               <>
                                 <TableRow
                                   key={order.id}
-                                  className="border-border/50 hover:bg-secondary/30 cursor-pointer transition-colors"
+                                  data-order-id={order.id}
+                                  className={`border-border/50 hover:bg-secondary/30 cursor-pointer transition-colors ${highlightedRowId === order.id ? 'ring-2 ring-primary ring-inset bg-primary/10' : ''}`}
                                   onClick={() => setExpandedOrderId(isExpanded ? null : order.id)}
                                 >
                                   <TableCell>
