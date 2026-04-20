@@ -16,6 +16,7 @@ import { useNavigate } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNotifications } from "@/hooks/useNotifications";
 import { NotificationItem } from "@/components/notifications/NotificationItem";
+import { GlobalSearch } from "@/components/layout/GlobalSearch";
 
 export function DashboardHeader() {
   const { user, loading: sessionLoading } = useSession();
