@@ -85,9 +85,6 @@ export function useOrderStats() {
   return useQuery({
     queryKey: ['order-stats'],
     queryFn: async () => {
-      const startOfToday = new Date();
-      startOfToday.setHours(0, 0, 0, 0);
-
       const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
       const [nuevos, enProceso, confirmados24h] = await Promise.all([
