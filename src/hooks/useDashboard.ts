@@ -50,7 +50,7 @@ export function useDashboardStats() {
       const lowStock = lowStockResult.data || [];
 
       const last24hRevenue = ordersLast24h
-        .filter(o => o.status === 'completado')
+        .filter(o => ['confirmado', 'completado'].includes(o.status))
         .reduce((sum, o) => sum + (o.total || 0), 0);
 
       return {
