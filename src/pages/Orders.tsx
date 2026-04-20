@@ -291,9 +291,12 @@ export default function Orders() {
           </Card>
           <Card className="glass border-border/50">
             <CardContent className="pt-6">
-              <p className="text-sm text-muted-foreground">Completados Hoy</p>
+              <p className="text-sm text-muted-foreground">Confirmados (últimas 24h)</p>
               <p className="text-2xl font-bold text-success">
-                {!stats ? <Skeleton className="h-8 w-12" /> : stats.completadosHoy.toLocaleString('es-BO')}
+                {!stats ? <Skeleton className="h-8 w-12" /> : stats.confirmados24h.toLocaleString('es-BO')}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Bs. {(stats?.confirmados24hMonto ?? 0).toLocaleString('es-BO')}
               </p>
             </CardContent>
           </Card>
