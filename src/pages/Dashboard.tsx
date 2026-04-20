@@ -151,29 +151,48 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Activity / Notifications */}
+          {/* Activity / Notifications — same source as bell dropdown */}
           <Card className="glass border-border/50">
-            <CardHeader>
-              <CardTitle className="text-lg">Notificaciones</CardTitle>
-              <CardDescription>Alertas del sistema</CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-lg">Notificaciones</CardTitle>
+                <CardDescription>Pedidos y pagos pendientes</CardDescription>
+              </div>
+              {unreadCount > 0 && (
+                <Badge variant="secondary" className="bg-primary/10 text-primary">
+                  {unreadCount}
+                </Badge>
+              )}
             </CardHeader>
             <CardContent>
-              {!notifications?.length ? (
+              {notificationsLoading ? (
+                <div className="space-y-3">
+                  {[...Array(3)].map((_, i) => (
+                    <Skeleton key={i} className="h-16 w-full" />
+                  ))}
+                </div>
+              ) : allNotifications.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <CheckCircle className="w-12 h-12 mx-auto mb-3 text-success opacity-50" />
                   <p>Sin notificaciones pendientes</p>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  {notifications.slice(0, 6).map((notification) => (
-                    <div key={notification.id} className="flex items-start gap-3">
-                      <NotificationIcon type={notification.notification_type} priority={notification.priority} />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-foreground font-medium truncate">{notification.title}</p>
-                        <p className="text-xs text-muted-foreground line-clamp-2">{notification.message}</p>
-                      </div>
-                    </div>
+                <div className="space-y-2">
+                  {topNotifications.map((n) => (
+                    <NotificationItem
+                      key={n.id}
+                      notification={n}
+                      isRead={isRead(n.id)}
+                      onClick={() => markAsRead(n.id)}
+                    />
                   ))}
+                  <Button asChild variant="ghost" size="sm" className="w-full mt-2 text-primary hover:text-primary">
+                    <Link to="/notifications">
+                      {allNotifications.length > topNotifications.length
+                        ? `Ver todas (${allNotifications.length - topNotifications.length} más)`
+                        : "Ver todas"}
+                    </Link>
+                  </Button>
                 </div>
               )}
             </CardContent>
