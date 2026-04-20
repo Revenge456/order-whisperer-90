@@ -1,4 +1,4 @@
-import { Bell, Search, User, LogOut, Shield } from "lucide-react";
+import { Bell, Search, User, LogOut, Shield, CheckCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -14,6 +14,8 @@ import { Badge } from "@/components/ui/badge";
 import { useSession, useUserRole, useSignOut } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useNotifications } from "@/hooks/useNotifications";
+import { NotificationItem } from "@/components/notifications/NotificationItem";
 
 export function DashboardHeader() {
   const { user, loading: sessionLoading } = useSession();
