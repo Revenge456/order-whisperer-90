@@ -74,16 +74,37 @@ export function GlobalSearch() {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  // Click outside
+  // Click outside (consider both input container and portal dropdown)
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      const inContainer = containerRef.current?.contains(target);
+      const inDropdown = dropdownRef.current?.contains(target);
+      if (!inContainer && !inDropdown) {
         setOpen(false);
       }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
+
+  // Compute dropdown position (fixed) anchored to input; recompute on open/scroll/resize
+  useEffect(() => {
+    if (!open) return;
+    const update = () => {
+      const el = containerRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      setDropdownPos({ top: rect.bottom + 8, left: rect.left, width: Math.max(rect.width, 448) });
+    };
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
+    };
+  }, [open]);
 
   const enabled = debounced.length >= 2;
 
