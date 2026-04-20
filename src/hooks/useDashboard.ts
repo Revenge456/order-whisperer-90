@@ -44,21 +44,21 @@ export function useDashboardStats() {
           .select('id', { count: 'exact', head: true }),
       ]);
 
-      const ordersToday = ordersResult.data || [];
+      const ordersLast24h = ordersResult.data || [];
       const pendingPayments = paymentsResult.data || [];
       const activeDeliveries = deliveriesResult.data || [];
       const lowStock = lowStockResult.data || [];
 
-      const todayRevenue = ordersToday
+      const last24hRevenue = ordersLast24h
         .filter(o => o.status === 'completado')
         .reduce((sum, o) => sum + (o.total || 0), 0);
 
       return {
-        totalOrdersToday: ordersToday.length,
-        pendingOrders: ordersToday.filter(o => o.status === 'nuevo').length,
-        todayRevenue,
+        totalOrdersLast24h: ordersLast24h.length,
+        pendingOrders: ordersLast24h.filter(o => o.status === 'nuevo').length,
+        last24hRevenue,
         pendingPayments: pendingPayments.length,
-        pendingPaymentsAmount: pendingPayments.reduce((sum, p) => sum + (p.amount || 0), 0),
+        pendingPaymentsAmount: pendingPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0),
         activeDeliveries: activeDeliveries.filter(d => 
           d.status && ['asignado', 'en_camino'].includes(d.status)
         ).length,
