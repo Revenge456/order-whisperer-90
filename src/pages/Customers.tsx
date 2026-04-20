@@ -120,6 +120,36 @@ export default function Customers() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paginated?.totalPages]);
 
+  // Handle ?highlight={customer_id} from global search → open detail sheet
+  const highlightId = searchParams.get('highlight');
+  useEffect(() => {
+    if (!highlightId) return;
+    let cancelled = false;
+    (async () => {
+      const local = rows.find((c) => c.id === highlightId);
+      if (local) {
+        setSelectedCustomer(local);
+        setIsDetailOpen(true);
+      } else {
+        const { data } = await supabase
+          .from('customers')
+          .select('*')
+          .eq('id', highlightId)
+          .maybeSingle();
+        if (cancelled || !data) return;
+        setSelectedCustomer(data as Customer);
+        setIsDetailOpen(true);
+      }
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('highlight');
+        return next;
+      }, { replace: true });
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [highlightId]);
+
   const handleRowClick = (customer: Customer) => {
     setSelectedCustomer(customer);
     setIsDetailOpen(true);
