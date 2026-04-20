@@ -30,6 +30,7 @@ import { TablePagination } from "@/components/ui/table-pagination";
 import { useColumnDefinitions } from "@/hooks/useColumnDefinitions";
 import { useIsAdmin } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Product = Tables<'products'>;
