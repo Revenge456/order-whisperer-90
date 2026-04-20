@@ -148,6 +148,7 @@ export function useCreateCustomer() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
+      queryClient.invalidateQueries({ queryKey: ['customers-paginated'] });
       queryClient.invalidateQueries({ queryKey: ['customer-counts'] });
       toast.success('Cliente creado exitosamente');
     },
@@ -174,6 +175,7 @@ export function useUpdateCustomer() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
+      queryClient.invalidateQueries({ queryKey: ['customers-paginated'] });
       queryClient.invalidateQueries({ queryKey: ['customer-counts'] });
       toast.success('Cliente actualizado exitosamente');
     },
