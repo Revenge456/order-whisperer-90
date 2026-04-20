@@ -67,10 +67,19 @@ const methodLabels: Record<string, string> = {
 };
 
 export default function Orders() {
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchParams] = useSearchParams();
+  const [searchTerm, setSearchTerm] = useState(searchParams.get("search") ?? "");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [activeTab, setActiveTab] = useState("orders");
+  const [activeTab, setActiveTab] = useState(searchParams.get("tab") ?? "orders");
   const [selectedPayment, setSelectedPayment] = useState<any>(null);
+
+  // Sync from URL when navigating from notifications
+  useEffect(() => {
+    const s = searchParams.get("search");
+    const t = searchParams.get("tab");
+    if (s !== null) setSearchTerm(s);
+    if (t) setActiveTab(t);
+  }, [searchParams]);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [deleteOrderId, setDeleteOrderId] = useState<string | null>(null);
