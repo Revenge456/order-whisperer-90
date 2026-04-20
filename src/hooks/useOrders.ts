@@ -88,7 +88,9 @@ export function useOrderStats() {
       const startOfToday = new Date();
       startOfToday.setHours(0, 0, 0, 0);
 
-      const [nuevos, enProceso, completadosHoy] = await Promise.all([
+      const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+      const [nuevos, enProceso, confirmados24h] = await Promise.all([
         supabase
           .from('orders')
           .select('id', { count: 'exact', head: true })
@@ -99,15 +101,22 @@ export function useOrderStats() {
           .in('status', ['confirmado', 'en_entrega']),
         supabase
           .from('orders')
-          .select('id', { count: 'exact', head: true })
-          .eq('status', 'completado')
-          .gte('completed_at', startOfToday.toISOString()),
+          .select('id, total')
+          .in('status', ['confirmado', 'completado'])
+          .gte('confirmed_at', last24h),
       ]);
+
+      const confirmadosRows = (confirmados24h.data ?? []) as Array<{ id: string; total: number | string }>;
+      const confirmadosMonto = confirmadosRows.reduce(
+        (sum, r) => sum + Number(r.total ?? 0),
+        0,
+      );
 
       return {
         nuevos: nuevos.count ?? 0,
         enProceso: enProceso.count ?? 0,
-        completadosHoy: completadosHoy.count ?? 0,
+        confirmados24h: confirmadosRows.length,
+        confirmados24hMonto: confirmadosMonto,
       };
     },
   });
