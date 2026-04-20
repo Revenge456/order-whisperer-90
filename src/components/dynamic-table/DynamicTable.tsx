@@ -168,7 +168,7 @@ export function DynamicTable<T extends Record<string, unknown>>({
                     </TableHead>
                   );
                 })}
-                <TableHead className="w-[40px]">
+                <TableHead className="w-[60px] sticky right-0 bg-muted/30 z-10">
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -206,8 +206,10 @@ export function DynamicTable<T extends Record<string, unknown>>({
                         </TableCell>
                       );
                     })}
-                    <TableCell className="py-2" onClick={(e) => e.stopPropagation()}>
-                      {customActions?.(row)}
+                    <TableCell className="py-2 sticky right-0 bg-background w-[60px]" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-center">
+                        {customActions?.(row)}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
