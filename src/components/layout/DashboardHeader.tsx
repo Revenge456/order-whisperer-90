@@ -53,13 +53,7 @@ export function DashboardHeader() {
       <div className="flex items-center gap-4">
         <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
         
-        <div className="relative hidden md:block">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input 
-            placeholder="Buscar pedidos, clientes..." 
-            className="w-80 pl-10 bg-secondary/50 border-border/50 focus:border-primary"
-          />
-        </div>
+        <GlobalSearch />
       </div>
 
       <div className="flex items-center gap-3">
