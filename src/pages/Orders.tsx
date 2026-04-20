@@ -24,7 +24,9 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { useOrders, usePendingPayments, useUpdatePayment, useDeleteOrder } from "@/hooks/useOrders";
+import { TablePagination } from "@/components/ui/table-pagination";
+import { usePaginatedOrders, useOrderStats, usePendingPayments, useUpdatePayment, useDeleteOrder } from "@/hooks/useOrders";
+import { filterBySearch } from "@/lib/search-utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,7 +37,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { filterBySearch } from "@/lib/search-utils";
 import { PaymentModal } from "@/components/modals/PaymentModal";
 import { PaymentStatusSelect } from "@/components/orders/PaymentStatusSelect";
 import { PaymentReceiptButton } from "@/components/orders/PaymentReceiptButton";
@@ -66,38 +67,107 @@ const methodLabels: Record<string, string> = {
   efectivo: "Efectivo",
 };
 
-export default function Orders() {
-  const [searchParams] = useSearchParams();
-  const [searchTerm, setSearchTerm] = useState(searchParams.get("search") ?? "");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [activeTab, setActiveTab] = useState(searchParams.get("tab") ?? "orders");
-  const [selectedPayment, setSelectedPayment] = useState<any>(null);
+const PAGE_SIZE_OPTIONS = [25, 50, 100];
+const DEFAULT_PAGE_SIZE = 50;
 
-  // Sync from URL when navigating from notifications
-  useEffect(() => {
-    const s = searchParams.get("search");
-    const t = searchParams.get("tab");
-    if (s !== null) setSearchTerm(s);
-    if (t) setActiveTab(t);
-  }, [searchParams]);
+export default function Orders() {
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const page = Math.max(1, Number(searchParams.get('page')) || 1);
+  const pageSize = (() => {
+    const ps = Number(searchParams.get('size')) || DEFAULT_PAGE_SIZE;
+    return PAGE_SIZE_OPTIONS.includes(ps) ? ps : DEFAULT_PAGE_SIZE;
+  })();
+
+  const [searchInput, setSearchInput] = useState(searchParams.get('search') ?? '');
+  const [debouncedSearch, setDebouncedSearch] = useState(searchInput);
+  const [statusFilter, setStatusFilter] = useState<string>(searchParams.get('status') ?? 'all');
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') ?? 'orders');
+
+  const [selectedPayment, setSelectedPayment] = useState<any>(null);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [deleteOrderId, setDeleteOrderId] = useState<string | null>(null);
 
-  const { data: orders, isLoading: ordersLoading } = useOrders();
+  // Sync from URL when navigating from notifications
+  useEffect(() => {
+    const s = searchParams.get('search');
+    const t = searchParams.get('tab');
+    if (s !== null) setSearchInput(s);
+    if (t) setActiveTab(t);
+  }, [searchParams]);
+
+  // Debounce search input (350ms)
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchInput), 350);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
+  // When search/status changes → reset to page 1 + sync URL
+  useEffect(() => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('page', '1');
+      if (debouncedSearch) next.set('search', debouncedSearch); else next.delete('search');
+      if (statusFilter && statusFilter !== 'all') next.set('status', statusFilter); else next.delete('status');
+      return next;
+    }, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch, statusFilter]);
+
+  const updatePageInUrl = (nextPage: number) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('page', String(nextPage));
+      return next;
+    }, { replace: true });
+  };
+
+  const updatePageSizeInUrl = (nextSize: number) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('size', String(nextSize));
+      next.set('page', '1');
+      return next;
+    }, { replace: true });
+  };
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('tab', tab);
+      return next;
+    }, { replace: true });
+  };
+
+  const { data: paginated, isLoading: ordersLoading, isFetching } = usePaginatedOrders({
+    page,
+    pageSize,
+    search: debouncedSearch,
+    status: statusFilter,
+  });
+  const { data: stats } = useOrderStats();
   const { data: pendingPayments, isLoading: paymentsLoading } = usePendingPayments();
   const updatePayment = useUpdatePayment();
   const deleteOrder = useDeleteOrder();
 
-  const filteredOrders = filterBySearch(
-    orders?.filter(o => statusFilter === "all" || o.status === statusFilter) || [],
-    searchTerm,
-    ['order_number', 'customer_name', 'customer_phone']
-  );
+  const filteredOrders = paginated?.rows ?? [];
+  const total = paginated?.total ?? 0;
+  const totalPages = paginated?.totalPages ?? 1;
+
+  // Snap back if current page > totalPages
+  useEffect(() => {
+    if (!paginated) return;
+    if (page > paginated.totalPages) {
+      updatePageInUrl(paginated.totalPages);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paginated?.totalPages]);
 
   const filteredPayments = filterBySearch(
     pendingPayments || [],
-    searchTerm,
+    debouncedSearch,
     ['order_number', 'customer_name', 'customer_phone']
   );
 
@@ -132,20 +202,6 @@ export default function Orders() {
     window.open(`https://wa.me/${cleaned}`, '_blank');
   };
 
-  const renderProducts = (products: ProductItem[] | null) => {
-    if (!products || products.length === 0) return <span className="text-muted-foreground text-xs">—</span>;
-    return (
-      <div className="space-y-0.5">
-        {products.map((p, i) => (
-          <div key={i} className="text-xs">
-            <span className="font-medium text-foreground">{p.quantity}x</span>{' '}
-            <span className="text-foreground">{p.product_name}</span>
-          </div>
-        ))}
-      </div>
-    );
-  };
-
   const renderLocation = (address: string | null, locationUrl: string | null) => {
     if (!address && !locationUrl) return <span className="text-muted-foreground text-xs">—</span>;
     return (
@@ -167,16 +223,6 @@ export default function Orders() {
     );
   };
 
-  // Stats
-  const pendingOrders = orders?.filter(o => o.status === 'nuevo').length || 0;
-  const inProgressOrders = orders?.filter(o => ['confirmado', 'en_entrega'].includes(o.status || '')).length || 0;
-  const completedToday = orders?.filter(o => {
-    if (o.status !== 'completado' || !o.completed_at) return false;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return new Date(o.completed_at) >= today;
-  }).length || 0;
-
   const pendingPaymentsAmount = pendingPayments?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0;
 
   return (
@@ -196,7 +242,7 @@ export default function Orders() {
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">Nuevos</p>
               <p className="text-2xl font-bold text-warning">
-                {ordersLoading ? <Skeleton className="h-8 w-12" /> : pendingOrders}
+                {!stats ? <Skeleton className="h-8 w-12" /> : stats.nuevos.toLocaleString('es-BO')}
               </p>
             </CardContent>
           </Card>
@@ -204,7 +250,7 @@ export default function Orders() {
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">En Proceso</p>
               <p className="text-2xl font-bold text-primary">
-                {ordersLoading ? <Skeleton className="h-8 w-12" /> : inProgressOrders}
+                {!stats ? <Skeleton className="h-8 w-12" /> : stats.enProceso.toLocaleString('es-BO')}
               </p>
             </CardContent>
           </Card>
@@ -212,7 +258,7 @@ export default function Orders() {
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">Completados Hoy</p>
               <p className="text-2xl font-bold text-success">
-                {ordersLoading ? <Skeleton className="h-8 w-12" /> : completedToday}
+                {!stats ? <Skeleton className="h-8 w-12" /> : stats.completadosHoy.toLocaleString('es-BO')}
               </p>
             </CardContent>
           </Card>
@@ -230,7 +276,7 @@ export default function Orders() {
         </div>
 
         {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <Tabs value={activeTab} onValueChange={handleTabChange}>
           <TabsList className="bg-secondary/50">
             <TabsTrigger value="orders" className="gap-2">
               <Package className="w-4 h-4" />
@@ -256,8 +302,8 @@ export default function Orders() {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
                       placeholder="Buscar por número, cliente o teléfono..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
+                      value={searchInput}
+                      onChange={(e) => setSearchInput(e.target.value)}
                       className="pl-10 bg-secondary/50 border-border/50"
                     />
                   </div>
@@ -282,7 +328,7 @@ export default function Orders() {
               <CardHeader>
                 <CardTitle>Lista de Pedidos</CardTitle>
                 <CardDescription>
-                  {filteredOrders.length} pedido(s) encontrado(s)
+                  {total.toLocaleString('es-BO')} pedido(s) encontrado(s)
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -556,6 +602,17 @@ export default function Orders() {
                     </Table>
                   </div>
                 )}
+
+                <TablePagination
+                  page={page}
+                  pageSize={pageSize}
+                  total={total}
+                  totalPages={totalPages}
+                  onPageChange={updatePageInUrl}
+                  onPageSizeChange={updatePageSizeInUrl}
+                  pageSizeOptions={PAGE_SIZE_OPTIONS}
+                  itemLabel="pedidos"
+                />
               </CardContent>
             </Card>
           </TabsContent>
@@ -676,9 +733,9 @@ export default function Orders() {
                 }
               }}
               disabled={deleteOrder.isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-destructive hover:bg-destructive/90"
             >
-              {deleteOrder.isPending ? 'Eliminando...' : 'Eliminar'}
+              Eliminar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

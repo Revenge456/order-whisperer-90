@@ -10,6 +10,7 @@ type ProductUpdate = TablesUpdate<'products'>;
 
 const BATCH_SIZE = 1000;
 
+/** Full dataset for stats / exports. */
 export function useProducts() {
   return useQuery({
     queryKey: ['products'],
@@ -30,6 +31,68 @@ export function useProducts() {
         offset += BATCH_SIZE;
       }
       return all;
+    },
+  });
+}
+
+/** Server-side paginated products with search + category filter. */
+export function usePaginatedProducts(params: {
+  page: number;
+  pageSize: number;
+  search?: string;
+  categoryId?: string; // 'all' | uuid
+}) {
+  const { page, pageSize, search = '', categoryId = 'all' } = params;
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  return useQuery({
+    queryKey: ['products-paginated', page, pageSize, search, categoryId],
+    queryFn: async () => {
+      let query = supabase
+        .from('products')
+        .select('*, product_categories(name)', { count: 'exact' });
+
+      if (categoryId && categoryId !== 'all') {
+        query = query.eq('category_id', categoryId);
+      }
+
+      const term = search.trim();
+      if (term) {
+        const escaped = term.replace(/[%,()]/g, ' ').trim();
+        query = query.or(`name.ilike.%${escaped}%,description.ilike.%${escaped}%`);
+      }
+
+      const { data, error, count } = await query
+        .order('name')
+        .range(from, to);
+
+      if (error) throw error;
+      const total = count ?? 0;
+      return {
+        rows: (data ?? []) as any[],
+        total,
+        totalPages: Math.max(1, Math.ceil(total / pageSize)),
+      };
+    },
+  });
+}
+
+/** Lightweight counts for KPI cards. */
+export function useProductCounts() {
+  return useQuery({
+    queryKey: ['product-counts'],
+    queryFn: async () => {
+      const [total, active, outOfStock] = await Promise.all([
+        supabase.from('products').select('id', { count: 'exact', head: true }),
+        supabase.from('products').select('id', { count: 'exact', head: true }).eq('is_active', true),
+        supabase.from('products').select('id', { count: 'exact', head: true }).eq('stock', 0),
+      ]);
+      return {
+        total: total.count ?? 0,
+        active: active.count ?? 0,
+        outOfStock: outOfStock.count ?? 0,
+      };
     },
   });
 }
@@ -80,6 +143,8 @@ export function useCreateProduct() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['products-paginated'] });
+      queryClient.invalidateQueries({ queryKey: ['product-counts'] });
       queryClient.invalidateQueries({ queryKey: ['low-stock-products'] });
       toast.success('Producto creado exitosamente');
     },
@@ -106,6 +171,8 @@ export function useUpdateProduct() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['products-paginated'] });
+      queryClient.invalidateQueries({ queryKey: ['product-counts'] });
       queryClient.invalidateQueries({ queryKey: ['low-stock-products'] });
       toast.success('Producto actualizado exitosamente');
     },
@@ -129,6 +196,8 @@ export function useDeleteProduct() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['products-paginated'] });
+      queryClient.invalidateQueries({ queryKey: ['product-counts'] });
       queryClient.invalidateQueries({ queryKey: ['low-stock-products'] });
       toast.success('Producto eliminado exitosamente');
     },

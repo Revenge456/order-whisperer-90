@@ -10,6 +10,7 @@ type PaymentStatus = Enums<'payment_status'>;
 
 const BATCH_SIZE = 1000;
 
+/** Full dataset (used by stats / dashboard). Batched to bypass 1k limit. */
 export function useOrders() {
   return useQuery({
     queryKey: ['orders'],
@@ -30,6 +31,84 @@ export function useOrders() {
         offset += BATCH_SIZE;
       }
       return all;
+    },
+  });
+}
+
+/** Server-side paginated orders. */
+export function usePaginatedOrders(params: {
+  page: number;
+  pageSize: number;
+  search?: string;
+  status?: string; // 'all' | OrderStatus
+}) {
+  const { page, pageSize, search = '', status = 'all' } = params;
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  return useQuery({
+    queryKey: ['orders-paginated', page, pageSize, search, status],
+    queryFn: async () => {
+      let query = supabase
+        .from('orders_complete_view')
+        .select('*', { count: 'exact' });
+
+      if (status && status !== 'all') {
+        query = query.eq('status', status as OrderStatus);
+      }
+
+      const term = search.trim();
+      if (term) {
+        const escaped = term.replace(/[%,()]/g, ' ').trim();
+        query = query.or(
+          `order_number.ilike.%${escaped}%,customer_name.ilike.%${escaped}%,customer_phone.ilike.%${escaped}%`
+        );
+      }
+
+      const { data, error, count } = await query
+        .order('created_at', { ascending: false })
+        .range(from, to);
+
+      if (error) throw error;
+      const total = count ?? 0;
+      return {
+        rows: (data ?? []) as OrderCompleteView[],
+        total,
+        totalPages: Math.max(1, Math.ceil(total / pageSize)),
+      };
+    },
+  });
+}
+
+/** Lightweight stats for KPI cards (counts only, no row payload). */
+export function useOrderStats() {
+  return useQuery({
+    queryKey: ['order-stats'],
+    queryFn: async () => {
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+
+      const [nuevos, enProceso, completadosHoy] = await Promise.all([
+        supabase
+          .from('orders')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'nuevo'),
+        supabase
+          .from('orders')
+          .select('id', { count: 'exact', head: true })
+          .in('status', ['confirmado', 'en_entrega']),
+        supabase
+          .from('orders')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'completado')
+          .gte('completed_at', startOfToday.toISOString()),
+      ]);
+
+      return {
+        nuevos: nuevos.count ?? 0,
+        enProceso: enProceso.count ?? 0,
+        completadosHoy: completadosHoy.count ?? 0,
+      };
     },
   });
 }
@@ -68,6 +147,8 @@ export function useUpdateOrder() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['orders-paginated'] });
+      queryClient.invalidateQueries({ queryKey: ['order-stats'] });
       toast.success('Pedido actualizado');
     },
     onError: (error: Error) => {
@@ -93,7 +174,9 @@ export function useUpdatePayment() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['orders-paginated'] });
       queryClient.invalidateQueries({ queryKey: ['pending-payments'] });
+      queryClient.invalidateQueries({ queryKey: ['order-stats'] });
       toast.success('Pago actualizado');
     },
     onError: (error: Error) => {
@@ -111,7 +194,7 @@ export function useDeleteOrder() {
       await supabase.from('deliveries').delete().eq('order_id', orderId);
       await supabase.from('payments').delete().eq('order_id', orderId);
       await supabase.from('order_items').delete().eq('order_id', orderId);
-      
+
       const { error } = await supabase
         .from('orders')
         .delete()
@@ -121,7 +204,9 @@ export function useDeleteOrder() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['orders-paginated'] });
       queryClient.invalidateQueries({ queryKey: ['pending-payments'] });
+      queryClient.invalidateQueries({ queryKey: ['order-stats'] });
       toast.success('Pedido eliminado');
     },
     onError: (error: Error) => {

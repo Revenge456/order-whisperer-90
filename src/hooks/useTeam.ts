@@ -27,19 +27,31 @@ export interface UpdateTeamMemberData {
   is_active?: boolean;
 }
 
+const BATCH_SIZE = 1000;
+
+/** Full team list (used for stats). Batched. */
 export function useTeam() {
   const queryClient = useQueryClient();
 
   const { data: teamMembers = [], isLoading, error } = useQuery({
     queryKey: ["team"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("users")
-        .select("*")
-        .order("created_at", { ascending: false });
-      
-      if (error) throw error;
-      return data as TeamMember[];
+      const all: TeamMember[] = [];
+      let offset = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("users")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .range(offset, offset + BATCH_SIZE - 1);
+
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        all.push(...(data as TeamMember[]));
+        if (data.length < BATCH_SIZE) break;
+        offset += BATCH_SIZE;
+      }
+      return all;
     },
   });
 
@@ -55,12 +67,14 @@ export function useTeam() {
         })
         .select()
         .single();
-      
+
       if (error) throw error;
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["team"] });
+      queryClient.invalidateQueries({ queryKey: ["team-paginated"] });
+      queryClient.invalidateQueries({ queryKey: ["team-counts"] });
       toast.success("Miembro del equipo creado exitosamente");
     },
     onError: (error) => {
@@ -78,12 +92,14 @@ export function useTeam() {
         .eq("id", id)
         .select()
         .single();
-      
+
       if (error) throw error;
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["team"] });
+      queryClient.invalidateQueries({ queryKey: ["team-paginated"] });
+      queryClient.invalidateQueries({ queryKey: ["team-counts"] });
       toast.success("Miembro actualizado exitosamente");
     },
     onError: (error) => {
@@ -98,11 +114,13 @@ export function useTeam() {
         .from("users")
         .delete()
         .eq("id", id);
-      
+
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["team"] });
+      queryClient.invalidateQueries({ queryKey: ["team-paginated"] });
+      queryClient.invalidateQueries({ queryKey: ["team-counts"] });
       toast.success("Miembro eliminado exitosamente");
     },
     onError: (error) => {
@@ -119,4 +137,66 @@ export function useTeam() {
     updateMember,
     deleteMember,
   };
+}
+
+/** Server-side paginated team members. */
+export function usePaginatedTeam(params: {
+  page: number;
+  pageSize: number;
+  search?: string;
+  role?: string; // 'all' | 'admin' | 'operator' | 'viewer'
+}) {
+  const { page, pageSize, search = '', role = 'all' } = params;
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  return useQuery({
+    queryKey: ["team-paginated", page, pageSize, search, role],
+    queryFn: async () => {
+      let query = supabase
+        .from("users")
+        .select("*", { count: "exact" });
+
+      if (role && role !== 'all') {
+        query = query.eq('role', role as 'admin' | 'operator' | 'viewer');
+      }
+
+      const term = search.trim();
+      if (term) {
+        const escaped = term.replace(/[%,()]/g, ' ').trim();
+        query = query.or(`full_name.ilike.%${escaped}%,email.ilike.%${escaped}%`);
+      }
+
+      const { data, error, count } = await query
+        .order("created_at", { ascending: false })
+        .range(from, to);
+
+      if (error) throw error;
+      const total = count ?? 0;
+      return {
+        rows: (data ?? []) as TeamMember[],
+        total,
+        totalPages: Math.max(1, Math.ceil(total / pageSize)),
+      };
+    },
+  });
+}
+
+/** Lightweight counts for KPI cards. */
+export function useTeamCounts() {
+  return useQuery({
+    queryKey: ["team-counts"],
+    queryFn: async () => {
+      const [total, admins, active] = await Promise.all([
+        supabase.from("users").select("id", { count: "exact", head: true }),
+        supabase.from("users").select("id", { count: "exact", head: true }).eq("role", "admin"),
+        supabase.from("users").select("id", { count: "exact", head: true }).eq("is_active", true),
+      ]);
+      return {
+        total: total.count ?? 0,
+        admins: admins.count ?? 0,
+        active: active.count ?? 0,
+      };
+    },
+  });
 }
