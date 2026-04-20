@@ -22,6 +22,8 @@ export function DashboardHeader() {
   const { data: role, isLoading: roleLoading } = useUserRole();
   const signOut = useSignOut();
   const navigate = useNavigate();
+  const { notifications, unreadCount, isRead, markAsRead, markAllAsRead, isLoading: notifLoading } =
+    useNotifications(3);
 
   const handleSignOut = async () => {
     await signOut.mutateAsync();
@@ -65,25 +67,59 @@ export function DashboardHeader() {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="w-5 h-5 text-muted-foreground" />
-              <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center bg-destructive text-destructive-foreground text-xs">
-                3
-              </Badge>
+              {unreadCount > 0 && (
+                <Badge className="absolute -top-1 -right-1 h-5 min-w-5 px-1 flex items-center justify-center bg-destructive text-destructive-foreground text-[10px] font-semibold">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </Badge>
+              )}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-80">
-            <DropdownMenuLabel>Notificaciones</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="flex flex-col items-start gap-1 py-3">
-              <span className="font-medium">Nuevo pedido #1234</span>
-              <span className="text-xs text-muted-foreground">Hace 5 minutos</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem className="flex flex-col items-start gap-1 py-3">
-              <span className="font-medium">Pago pendiente confirmación</span>
-              <span className="text-xs text-muted-foreground">Hace 15 minutos</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem className="flex flex-col items-start gap-1 py-3">
-              <span className="font-medium">Stock bajo: Proteína Whey</span>
-              <span className="text-xs text-muted-foreground">Hace 1 hora</span>
+          <DropdownMenuContent align="end" className="w-96 p-0">
+            <div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
+              <DropdownMenuLabel className="p-0 text-sm">Notificaciones</DropdownMenuLabel>
+              {unreadCount > 0 && (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    markAllAsRead();
+                  }}
+                  className="text-xs text-primary hover:underline flex items-center gap-1"
+                >
+                  <CheckCheck className="w-3 h-3" />
+                  Marcar todas
+                </button>
+              )}
+            </div>
+            <div className="max-h-96 overflow-y-auto p-1">
+              {notifLoading ? (
+                <div className="p-3 space-y-2">
+                  <Skeleton className="h-14 w-full" />
+                  <Skeleton className="h-14 w-full" />
+                </div>
+              ) : notifications.length === 0 ? (
+                <div className="py-10 px-4 text-center">
+                  <p className="text-3xl mb-2">🎉</p>
+                  <p className="text-sm text-foreground font-medium">
+                    Todo al día, no hay pendientes
+                  </p>
+                </div>
+              ) : (
+                notifications.map((n) => (
+                  <NotificationItem
+                    key={`${n.kind}-${n.id}`}
+                    notification={n}
+                    isRead={isRead(n.id)}
+                    onClick={() => markAsRead(n.id)}
+                  />
+                ))
+              )}
+            </div>
+            <DropdownMenuSeparator className="my-0" />
+            <DropdownMenuItem
+              className="justify-center text-sm text-primary cursor-pointer py-2.5"
+              onClick={() => navigate("/notifications")}
+            >
+              Ver todas las notificaciones
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
