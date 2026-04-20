@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Search, Eye, Clock, CheckCircle, XCircle, Package, Image, CreditCard, AlertCircle, MapPin, ExternalLink, MessageCircle, ChevronDown, ChevronUp, ShoppingBag, Trash2 } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
