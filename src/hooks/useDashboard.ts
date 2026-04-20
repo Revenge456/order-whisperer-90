@@ -5,9 +5,8 @@ export function useDashboardStats() {
   return useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: async () => {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const todayISO = today.toISOString();
+      // Last 24 hours window (rolling, not calendar day)
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
       // Fetch multiple stats in parallel
       const [
@@ -17,16 +16,17 @@ export function useDashboardStats() {
         lowStockResult,
         customersResult,
       ] = await Promise.all([
-        // Orders today
+        // Orders last 24h
         supabase
           .from('orders')
           .select('id, status, total, created_at')
-          .gte('created_at', todayISO),
+          .gte('created_at', since),
         
-        // Pending payments
+        // Pending payments — same source as bell notifications (payments table)
         supabase
-          .from('pending_payments_view')
-          .select('payment_id, amount'),
+          .from('payments')
+          .select('id, amount')
+          .eq('status', 'pendiente'),
         
         // Active deliveries
         supabase
@@ -44,21 +44,21 @@ export function useDashboardStats() {
           .select('id', { count: 'exact', head: true }),
       ]);
 
-      const ordersToday = ordersResult.data || [];
+      const ordersLast24h = ordersResult.data || [];
       const pendingPayments = paymentsResult.data || [];
       const activeDeliveries = deliveriesResult.data || [];
       const lowStock = lowStockResult.data || [];
 
-      const todayRevenue = ordersToday
+      const last24hRevenue = ordersLast24h
         .filter(o => o.status === 'completado')
         .reduce((sum, o) => sum + (o.total || 0), 0);
 
       return {
-        totalOrdersToday: ordersToday.length,
-        pendingOrders: ordersToday.filter(o => o.status === 'nuevo').length,
-        todayRevenue,
+        totalOrdersLast24h: ordersLast24h.length,
+        pendingOrders: ordersLast24h.filter(o => o.status === 'nuevo').length,
+        last24hRevenue,
         pendingPayments: pendingPayments.length,
-        pendingPaymentsAmount: pendingPayments.reduce((sum, p) => sum + (p.amount || 0), 0),
+        pendingPaymentsAmount: pendingPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0),
         activeDeliveries: activeDeliveries.filter(d => 
           d.status && ['asignado', 'en_camino'].includes(d.status)
         ).length,
