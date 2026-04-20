@@ -129,7 +129,7 @@ export function DynamicTable<T extends Record<string, unknown>>({
       )}
 
       {/* Table */}
-      <div className="rounded-lg border border-border overflow-x-auto">
+      <div className="rounded-lg border border-border w-full">
         {loading ? (
           <div className="p-4 space-y-3">
             {[...Array(5)].map((_, i) => (
