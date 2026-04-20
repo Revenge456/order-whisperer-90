@@ -30,11 +30,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const mainNavItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, pageKey: "dashboard" },
-  { title: "Notificaciones", url: "/notifications", icon: Bell, pageKey: "dashboard" },
   { title: "Clientes", url: "/customers", icon: Users, pageKey: "customers" },
   { title: "Pedidos", url: "/orders", icon: ShoppingCart, pageKey: "orders" },
   { title: "Entregas", url: "/deliveries", icon: Truck, pageKey: "deliveries" },
   { title: "Productos", url: "/products", icon: Package, pageKey: "products" },
+  { title: "Notificaciones", url: "/notifications", icon: Bell, pageKey: "dashboard" },
 ];
 
 const secondaryNavItems = [
