@@ -8,17 +8,28 @@ type ProductCategory = Tables<'product_categories'>;
 type ProductInsert = TablesInsert<'products'>;
 type ProductUpdate = TablesUpdate<'products'>;
 
+const BATCH_SIZE = 1000;
+
 export function useProducts() {
   return useQuery({
     queryKey: ['products'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('products')
-        .select('*, product_categories(name)')
-        .order('name');
+      const all: any[] = [];
+      let offset = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from('products')
+          .select('*, product_categories(name)')
+          .order('name')
+          .range(offset, offset + BATCH_SIZE - 1);
 
-      if (error) throw error;
-      return data;
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        all.push(...data);
+        if (data.length < BATCH_SIZE) break;
+        offset += BATCH_SIZE;
+      }
+      return all;
     },
   });
 }
