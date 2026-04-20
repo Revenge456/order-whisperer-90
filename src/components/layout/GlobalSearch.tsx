@@ -191,8 +191,8 @@ export function GlobalSearch() {
 
       {showDropdown && (
         <div
-          className="absolute left-0 right-0 top-full mt-2 w-[28rem] max-w-[90vw] rounded-md border border-border text-popover-foreground shadow-2xl z-[100] overflow-hidden"
-          style={{ backgroundColor: "hsl(var(--popover))", backdropFilter: "none" }}
+          className="absolute left-0 right-0 top-full mt-2 w-[28rem] max-w-[90vw] rounded-lg border border-border/80 text-popover-foreground shadow-2xl z-[100] overflow-hidden ring-1 ring-black/40"
+          style={{ backgroundColor: "hsl(220 18% 14%)" }}
         >
           {isFetching && !data ? (
             <div className="p-3 space-y-2">
