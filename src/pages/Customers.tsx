@@ -24,6 +24,7 @@ import {
 import { useColumnDefinitions } from "@/hooks/useColumnDefinitions";
 import { useIsAdmin } from "@/hooks/useAuth";
 import type { Tables } from "@/integrations/supabase/types";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 type Customer = Tables<'customers'>;
