@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { Search, User, Package, ShoppingBag, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -49,8 +50,10 @@ export function GlobalSearch() {
   const [debounced, setDebounced] = useState("");
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number; width: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Debounce
   useEffect(() => {
@@ -71,16 +74,37 @@ export function GlobalSearch() {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  // Click outside
+  // Click outside (consider both input container and portal dropdown)
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      const inContainer = containerRef.current?.contains(target);
+      const inDropdown = dropdownRef.current?.contains(target);
+      if (!inContainer && !inDropdown) {
         setOpen(false);
       }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
+
+  // Compute dropdown position (fixed) anchored to input; recompute on open/scroll/resize
+  useEffect(() => {
+    if (!open) return;
+    const update = () => {
+      const el = containerRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      setDropdownPos({ top: rect.bottom + 8, left: rect.left, width: Math.max(rect.width, 448) });
+    };
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
+    };
+  }, [open]);
 
   const enabled = debounced.length >= 2;
 
@@ -189,100 +213,110 @@ export function GlobalSearch() {
         ⌘K
       </kbd>
 
-      {showDropdown && (
-        <div
-          className="absolute left-0 right-0 top-full mt-2 w-[28rem] max-w-[90vw] rounded-lg border border-border/80 text-popover-foreground shadow-2xl z-[100] overflow-hidden ring-1 ring-black/40"
-          style={{ backgroundColor: "hsl(220 18% 14%)" }}
-        >
-          {isFetching && !data ? (
-            <div className="p-3 space-y-2">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-            </div>
-          ) : totalResults === 0 ? (
-            <div className="py-8 px-4 text-center">
-              <p className="text-sm text-muted-foreground">
-                Sin resultados para <span className="text-foreground font-medium">"{debounced}"</span>
-              </p>
-            </div>
-          ) : (
-            <div className="max-h-[28rem] overflow-y-auto py-1">
-              {isFetching && (
-                <div className="px-3 py-1.5 flex items-center gap-2 text-xs text-muted-foreground">
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                  Actualizando...
-                </div>
-              )}
+      {showDropdown && dropdownPos &&
+        createPortal(
+          <div
+            ref={dropdownRef}
+            className="fixed rounded-lg border border-border/80 text-popover-foreground shadow-2xl overflow-hidden ring-1 ring-black/40"
+            style={{
+              top: dropdownPos.top,
+              left: dropdownPos.left,
+              width: dropdownPos.width,
+              maxWidth: "90vw",
+              backgroundColor: "hsl(220 18% 14%)",
+              zIndex: 9999,
+            }}
+          >
+            {isFetching && !data ? (
+              <div className="p-3 space-y-2">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ) : totalResults === 0 ? (
+              <div className="py-8 px-4 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Sin resultados para <span className="text-foreground font-medium">"{debounced}"</span>
+                </p>
+              </div>
+            ) : (
+              <div className="max-h-[28rem] overflow-y-auto py-1">
+                {isFetching && (
+                  <div className="px-3 py-1.5 flex items-center gap-2 text-xs text-muted-foreground">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Actualizando...
+                  </div>
+                )}
 
-              {data && data.customers.length > 0 && (
-                <Section title={`Clientes (${data.customers.length})`}>
-                  {data.customers.map((c, i) => {
-                    const idx = customerStart + i;
-                    return (
-                      <ResultRow
-                        key={c.id}
-                        active={idx === activeIndex}
-                        onMouseEnter={() => setActiveIndex(idx)}
-                        onClick={() => goTo({ kind: "customer", data: c })}
-                        icon={<User className="w-4 h-4 text-primary" />}
-                        title={c.name || "(sin nombre)"}
-                        right={<span className="text-xs text-muted-foreground tabular-nums">{c.phone}</span>}
-                      />
-                    );
-                  })}
-                </Section>
-              )}
+                {data && data.customers.length > 0 && (
+                  <Section title={`Clientes (${data.customers.length})`}>
+                    {data.customers.map((c, i) => {
+                      const idx = customerStart + i;
+                      return (
+                        <ResultRow
+                          key={c.id}
+                          active={idx === activeIndex}
+                          onMouseEnter={() => setActiveIndex(idx)}
+                          onClick={() => goTo({ kind: "customer", data: c })}
+                          icon={<User className="w-4 h-4 text-primary" />}
+                          title={c.name || "(sin nombre)"}
+                          right={<span className="text-xs text-muted-foreground tabular-nums">{c.phone}</span>}
+                        />
+                      );
+                    })}
+                  </Section>
+                )}
 
-              {data && data.orders.length > 0 && (
-                <Section title={`Pedidos (${data.orders.length})`}>
-                  {data.orders.map((o, i) => {
-                    const idx = orderStart + i;
-                    return (
-                      <ResultRow
-                        key={o.id}
-                        active={idx === activeIndex}
-                        onMouseEnter={() => setActiveIndex(idx)}
-                        onClick={() => goTo({ kind: "order", data: o })}
-                        icon={<Package className="w-4 h-4 text-primary" />}
-                        title={o.order_number}
-                        subtitle={o.customers?.name || undefined}
-                        right={
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-medium tabular-nums">{formatBs(o.total)}</span>
-                            <Badge variant="outline" className={cn("text-[10px] py-0 h-4 px-1.5", statusBadgeClass(o.status))}>
-                              {o.status}
-                            </Badge>
-                          </div>
-                        }
-                      />
-                    );
-                  })}
-                </Section>
-              )}
+                {data && data.orders.length > 0 && (
+                  <Section title={`Pedidos (${data.orders.length})`}>
+                    {data.orders.map((o, i) => {
+                      const idx = orderStart + i;
+                      return (
+                        <ResultRow
+                          key={o.id}
+                          active={idx === activeIndex}
+                          onMouseEnter={() => setActiveIndex(idx)}
+                          onClick={() => goTo({ kind: "order", data: o })}
+                          icon={<Package className="w-4 h-4 text-primary" />}
+                          title={o.order_number}
+                          subtitle={o.customers?.name || undefined}
+                          right={
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-medium tabular-nums">{formatBs(o.total)}</span>
+                              <Badge variant="outline" className={cn("text-[10px] py-0 h-4 px-1.5", statusBadgeClass(o.status))}>
+                                {o.status}
+                              </Badge>
+                            </div>
+                          }
+                        />
+                      );
+                    })}
+                  </Section>
+                )}
 
-              {data && data.products.length > 0 && (
-                <Section title={`Productos (${data.products.length})`}>
-                  {data.products.map((p, i) => {
-                    const idx = productStart + i;
-                    return (
-                      <ResultRow
-                        key={p.id}
-                        active={idx === activeIndex}
-                        onMouseEnter={() => setActiveIndex(idx)}
-                        onClick={() => goTo({ kind: "product", data: p })}
-                        icon={<ShoppingBag className="w-4 h-4 text-primary" />}
-                        title={p.name}
-                        right={<span className="text-xs font-medium tabular-nums">{formatBs(p.price)}</span>}
-                      />
-                    );
-                  })}
-                </Section>
-              )}
-            </div>
-          )}
-        </div>
-      )}
+                {data && data.products.length > 0 && (
+                  <Section title={`Productos (${data.products.length})`}>
+                    {data.products.map((p, i) => {
+                      const idx = productStart + i;
+                      return (
+                        <ResultRow
+                          key={p.id}
+                          active={idx === activeIndex}
+                          onMouseEnter={() => setActiveIndex(idx)}
+                          onClick={() => goTo({ kind: "product", data: p })}
+                          icon={<ShoppingBag className="w-4 h-4 text-primary" />}
+                          title={p.name}
+                          right={<span className="text-xs font-medium tabular-nums">{formatBs(p.price)}</span>}
+                        />
+                      );
+                    })}
+                  </Section>
+                )}
+              </div>
+            )}
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
