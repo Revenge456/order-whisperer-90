@@ -11,11 +11,15 @@ import {
   XCircle,
   Package
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { useDashboardStats, useRecentOrders, useRecentActivity } from "@/hooks/useDashboard";
+import { useDashboardStats, useRecentOrders } from "@/hooks/useDashboard";
+import { useNotifications } from "@/hooks/useNotifications";
+import { NotificationItem } from "@/components/notifications/NotificationItem";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import type { Enums } from "@/integrations/supabase/types";
