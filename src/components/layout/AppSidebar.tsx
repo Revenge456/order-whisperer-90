@@ -8,7 +8,8 @@ import {
   UsersRound,
   Dumbbell,
   MessageSquare,
-  Megaphone
+  Megaphone,
+  Bell
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
@@ -29,6 +30,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const mainNavItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, pageKey: "dashboard" },
+  { title: "Notificaciones", url: "/notifications", icon: Bell, pageKey: "dashboard" },
   { title: "Clientes", url: "/customers", icon: Users, pageKey: "customers" },
   { title: "Pedidos", url: "/orders", icon: ShoppingCart, pageKey: "orders" },
   { title: "Entregas", url: "/deliveries", icon: Truck, pageKey: "deliveries" },

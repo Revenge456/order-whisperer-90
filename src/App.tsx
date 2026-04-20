@@ -14,6 +14,7 @@ import Reports from "./pages/Reports";
 import Team from "./pages/Team";
 import ChatHistory from "./pages/ChatHistory";
 import Broadcasts from "./pages/Broadcasts";
+import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,6 +33,11 @@ const App = () => (
           <Route path="/dashboard" element={
             <ProtectedRoute pageKey="dashboard">
               <Dashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/notifications" element={
+            <ProtectedRoute pageKey="dashboard">
+              <Notifications />
             </ProtectedRoute>
           } />
           <Route path="/customers" element={
