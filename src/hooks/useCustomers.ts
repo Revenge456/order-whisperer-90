@@ -11,7 +11,7 @@ const BATCH_SIZE = 1000;
 
 /**
  * Fetches ALL customers in batches of 1000 to bypass PostgREST default limit.
- * Required because the customers table can grow >1000 rows.
+ * Used for export-to-Excel and any consumer needing the full dataset in memory.
  */
 export function useCustomers() {
   return useQuery({
@@ -37,6 +37,60 @@ export function useCustomers() {
 
       return all;
     },
+  });
+}
+
+interface PaginatedCustomersParams {
+  page: number;          // 1-indexed
+  pageSize: number;
+  search?: string;
+  canal?: string;        // 'all' or specific value
+}
+
+interface PaginatedCustomersResult {
+  rows: Customer[];
+  total: number;
+  totalPages: number;
+}
+
+/**
+ * Server-side paginated customers query with search + canal filter.
+ * Search is case/accent-insensitive via ilike on name and phone.
+ */
+export function usePaginatedCustomers({ page, pageSize, search, canal }: PaginatedCustomersParams) {
+  return useQuery({
+    queryKey: ['customers-paginated', page, pageSize, search ?? '', canal ?? 'all'],
+    queryFn: async (): Promise<PaginatedCustomersResult> => {
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+
+      let query = supabase
+        .from('customers')
+        .select('*', { count: 'exact' })
+        .order('created_at', { ascending: false });
+
+      if (canal && canal !== 'all') {
+        query = query.eq('canal', canal);
+      }
+
+      const term = (search ?? '').trim();
+      if (term.length > 0) {
+        // Escape % and , which are special in PostgREST or() filter
+        const safe = term.replace(/[%,]/g, ' ');
+        query = query.or(`name.ilike.%${safe}%,phone.ilike.%${safe}%`);
+      }
+
+      const { data, error, count } = await query.range(from, to);
+      if (error) throw error;
+
+      const total = count ?? 0;
+      return {
+        rows: (data ?? []) as Customer[],
+        total,
+        totalPages: Math.max(1, Math.ceil(total / pageSize)),
+      };
+    },
+    placeholderData: (prev) => prev,
   });
 }
 
