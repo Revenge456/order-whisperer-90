@@ -10,6 +10,7 @@ type DeliveryStatus = Enums<'delivery_status'>;
 
 const BATCH_SIZE = 1000;
 
+/** Full dataset for stats. */
 export function useActiveDeliveries() {
   return useQuery({
     queryKey: ['active-deliveries'],
@@ -30,6 +31,84 @@ export function useActiveDeliveries() {
         offset += BATCH_SIZE;
       }
       return all;
+    },
+  });
+}
+
+/** Server-side paginated deliveries (active_deliveries_view). */
+export function usePaginatedDeliveries(params: {
+  page: number;
+  pageSize: number;
+  search?: string;
+  status?: string; // 'all' | DeliveryStatus
+}) {
+  const { page, pageSize, search = '', status = 'all' } = params;
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  return useQuery({
+    queryKey: ['deliveries-paginated', page, pageSize, search, status],
+    queryFn: async () => {
+      let query = supabase
+        .from('active_deliveries_view')
+        .select('*', { count: 'exact' });
+
+      if (status && status !== 'all') {
+        query = query.eq('status', status as DeliveryStatus);
+      }
+
+      const term = search.trim();
+      if (term) {
+        const escaped = term.replace(/[%,()]/g, ' ').trim();
+        query = query.or(
+          `order_number.ilike.%${escaped}%,customer_name.ilike.%${escaped}%,driver_name.ilike.%${escaped}%`
+        );
+      }
+
+      const { data, error, count } = await query
+        .order('assigned_at', { ascending: false })
+        .range(from, to);
+
+      if (error) throw error;
+      const total = count ?? 0;
+      return {
+        rows: (data ?? []) as ActiveDeliveryView[],
+        total,
+        totalPages: Math.max(1, Math.ceil(total / pageSize)),
+      };
+    },
+  });
+}
+
+/** Lightweight counts for KPI cards. */
+export function useDeliveryCounts() {
+  return useQuery({
+    queryKey: ['delivery-counts'],
+    queryFn: async () => {
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+
+      const [sinAsignar, enRuta, entregadosHoy] = await Promise.all([
+        supabase
+          .from('deliveries')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'sin_asignar'),
+        supabase
+          .from('deliveries')
+          .select('id', { count: 'exact', head: true })
+          .in('status', ['asignado', 'en_camino']),
+        supabase
+          .from('deliveries')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'entregado')
+          .gte('delivered_at', startOfToday.toISOString()),
+      ]);
+
+      return {
+        sinAsignar: sinAsignar.count ?? 0,
+        enRuta: enRuta.count ?? 0,
+        entregadosHoy: entregadosHoy.count ?? 0,
+      };
     },
   });
 }
@@ -92,6 +171,8 @@ export function useUpdateDelivery() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['deliveries'] });
       queryClient.invalidateQueries({ queryKey: ['active-deliveries'] });
+      queryClient.invalidateQueries({ queryKey: ['deliveries-paginated'] });
+      queryClient.invalidateQueries({ queryKey: ['delivery-counts'] });
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       toast.success('Entrega actualizada');
     },
@@ -130,6 +211,8 @@ export function useAssignDriver() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['deliveries'] });
       queryClient.invalidateQueries({ queryKey: ['active-deliveries'] });
+      queryClient.invalidateQueries({ queryKey: ['deliveries-paginated'] });
+      queryClient.invalidateQueries({ queryKey: ['delivery-counts'] });
       toast.success('Repartidor asignado');
     },
     onError: (error: Error) => {
