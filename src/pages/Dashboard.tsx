@@ -37,7 +37,14 @@ const orderStatusConfig: Record<OrderStatus, { label: string; style: string }> =
 export default function Dashboard() {
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
   const { data: recentOrders, isLoading: ordersLoading } = useRecentOrders();
-  const { data: notifications } = useRecentActivity();
+  const {
+    notifications: topNotifications,
+    allNotifications,
+    unreadCount,
+    isLoading: notificationsLoading,
+    isRead,
+    markAsRead,
+  } = useNotifications(3);
 
   const formatTime = (dateString: string | null) => {
     if (!dateString) return '';
@@ -56,15 +63,15 @@ export default function Dashboard() {
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatsCard
-            title="Pedidos Hoy"
-            value={statsLoading ? null : stats?.totalOrdersToday || 0}
+            title="Pedidos (últimas 24h)"
+            value={statsLoading ? null : stats?.totalOrdersLast24h || 0}
             icon={ShoppingCart}
             variant="primary"
             subtitle={`${stats?.pendingOrders || 0} pendientes`}
           />
           <StatsCard
-            title="Ingresos Hoy"
-            value={statsLoading ? null : `Bs. ${(stats?.todayRevenue || 0).toLocaleString()}`}
+            title="Ingresos (últimas 24h)"
+            value={statsLoading ? null : `Bs. ${(stats?.last24hRevenue || 0).toLocaleString()}`}
             icon={TrendingUp}
             variant="success"
           />
