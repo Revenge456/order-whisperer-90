@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Label } from "@/components/ui/label";
-import { Plus, Search, Package, AlertTriangle } from "lucide-react";
+import { Plus, Search, AlertTriangle } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,12 +14,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useProducts, useProductCategories, useLowStockProducts, useUpdateProduct, useDeleteProduct } from "@/hooks/useProducts";
-import { filterBySearch } from "@/lib/search-utils";
+import {
+  usePaginatedProducts,
+  useProductCounts,
+  useProductCategories,
+  useLowStockProducts,
+  useUpdateProduct,
+  useDeleteProduct,
+} from "@/hooks/useProducts";
 import { ProductModal } from "@/components/modals/ProductModal";
 import { ProductImageLightbox } from "@/components/products/ProductImageLightbox";
 import { ProductImageUpload } from "@/components/products/ProductImageUpload";
 import { DynamicTable, RecordDetailSheet } from "@/components/dynamic-table";
+import { TablePagination } from "@/components/ui/table-pagination";
 import { useColumnDefinitions } from "@/hooks/useColumnDefinitions";
 import { useIsAdmin } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -26,22 +34,89 @@ import type { Tables } from "@/integrations/supabase/types";
 
 type Product = Tables<'products'>;
 
+const PAGE_SIZE_OPTIONS = [25, 50, 100];
+const DEFAULT_PAGE_SIZE = 50;
+
 export default function Products() {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const page = Math.max(1, Number(searchParams.get('page')) || 1);
+  const pageSize = (() => {
+    const ps = Number(searchParams.get('size')) || DEFAULT_PAGE_SIZE;
+    return PAGE_SIZE_OPTIONS.includes(ps) ? ps : DEFAULT_PAGE_SIZE;
+  })();
+
+  const [searchInput, setSearchInput] = useState(searchParams.get('q') ?? '');
+  const [debouncedSearch, setDebouncedSearch] = useState(searchInput);
+  const [categoryFilter, setCategoryFilter] = useState<string>(searchParams.get('cat') ?? 'all');
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<Product | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<{ url: string; name: string } | null>(null);
 
-  const { data: products, isLoading } = useProducts();
+  // Debounce search input
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchInput), 350);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
+  // Reset to page 1 + sync URL when search/category changes
+  useEffect(() => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('page', '1');
+      if (debouncedSearch) next.set('q', debouncedSearch); else next.delete('q');
+      if (categoryFilter && categoryFilter !== 'all') next.set('cat', categoryFilter); else next.delete('cat');
+      return next;
+    }, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch, categoryFilter]);
+
+  const updatePageInUrl = (nextPage: number) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('page', String(nextPage));
+      return next;
+    }, { replace: true });
+  };
+
+  const updatePageSizeInUrl = (nextSize: number) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('size', String(nextSize));
+      next.set('page', '1');
+      return next;
+    }, { replace: true });
+  };
+
+  const { data: paginated, isLoading, isFetching } = usePaginatedProducts({
+    page,
+    pageSize,
+    search: debouncedSearch,
+    categoryId: categoryFilter,
+  });
+  const { data: counts } = useProductCounts();
   const { data: categories } = useProductCategories();
   const { data: lowStockProducts } = useLowStockProducts();
   const { data: columns, isLoading: columnsLoading } = useColumnDefinitions('products');
   const updateProduct = useUpdateProduct();
   const deleteProduct = useDeleteProduct();
   const isAdmin = useIsAdmin();
+
+  const rows = paginated?.rows ?? [];
+  const total = paginated?.total ?? 0;
+  const totalPages = paginated?.totalPages ?? 1;
+
+  // Snap back if page > totalPages
+  useEffect(() => {
+    if (!paginated) return;
+    if (page > paginated.totalPages) {
+      updatePageInUrl(paginated.totalPages);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paginated?.totalPages]);
 
   // Listen for lightbox events from CellRenderer
   useEffect(() => {
@@ -52,12 +127,6 @@ export default function Products() {
     window.addEventListener('product-image-lightbox', handler);
     return () => window.removeEventListener('product-image-lightbox', handler);
   }, []);
-
-  const filteredProducts = filterBySearch(
-    products?.filter(p => categoryFilter === "all" || p.category_id === categoryFilter) || [],
-    searchTerm,
-    ['name', 'description']
-  );
 
   const handleNewProduct = () => {
     setEditingProduct(null);
@@ -106,11 +175,8 @@ export default function Products() {
     }
   };
 
-  const activeProducts = products?.filter(p => p.is_active).length || 0;
-  const outOfStockProducts = products?.filter(p => p.stock === 0).length || 0;
-
   // Transform products for DynamicTable
-  const tableData = filteredProducts.map((product: any) => ({
+  const tableData = rows.map((product: any) => ({
     ...product,
     category_name: product.product_categories?.name || 'Sin categoría',
   }));
@@ -137,9 +203,9 @@ export default function Products() {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
-                  placeholder="Buscar productos... (ignora acentos)"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Buscar productos por nombre o descripción..."
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
                   className="pl-10 bg-secondary/50 border-border/50"
                 />
               </div>
@@ -166,7 +232,7 @@ export default function Products() {
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">Total Productos</p>
               <p className="text-2xl font-bold text-foreground">
-                {isLoading ? <Skeleton className="h-8 w-16" /> : products?.length || 0}
+                {!counts ? <Skeleton className="h-8 w-16" /> : counts.total.toLocaleString('es-BO')}
               </p>
             </CardContent>
           </Card>
@@ -174,7 +240,7 @@ export default function Products() {
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">Activos</p>
               <p className="text-2xl font-bold text-success">
-                {isLoading ? <Skeleton className="h-8 w-16" /> : activeProducts}
+                {!counts ? <Skeleton className="h-8 w-16" /> : counts.active.toLocaleString('es-BO')}
               </p>
             </CardContent>
           </Card>
@@ -182,7 +248,7 @@ export default function Products() {
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">Stock Bajo</p>
               <p className="text-2xl font-bold text-warning">
-                {isLoading ? <Skeleton className="h-8 w-16" /> : lowStockProducts?.length || 0}
+                {!lowStockProducts ? <Skeleton className="h-8 w-16" /> : lowStockProducts?.length || 0}
               </p>
             </CardContent>
           </Card>
@@ -190,7 +256,7 @@ export default function Products() {
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">Sin Stock</p>
               <p className="text-2xl font-bold text-destructive">
-                {isLoading ? <Skeleton className="h-8 w-16" /> : outOfStockProducts}
+                {!counts ? <Skeleton className="h-8 w-16" /> : counts.outOfStock.toLocaleString('es-BO')}
               </p>
             </CardContent>
           </Card>
@@ -217,14 +283,29 @@ export default function Products() {
         )}
 
         {/* Dynamic Products Table */}
-        <DynamicTable
-          moduleKey="products"
-          data={tableData}
-          isLoading={isLoading || columnsLoading}
-          onRowClick={handleRowClick}
-          getRowId={(row) => row.id as string}
-          emptyMessage={searchTerm ? 'No se encontraron productos con ese criterio' : 'No hay productos registrados'}
-        />
+        <Card className="glass border-border/50">
+          <CardContent className="pt-6">
+            <DynamicTable
+              moduleKey="products"
+              data={tableData}
+              isLoading={isLoading || isFetching || columnsLoading}
+              onRowClick={handleRowClick}
+              getRowId={(row) => row.id as string}
+              emptyMessage={debouncedSearch ? 'No se encontraron productos con ese criterio' : 'No hay productos registrados'}
+            />
+
+            <TablePagination
+              page={page}
+              pageSize={pageSize}
+              total={total}
+              totalPages={totalPages}
+              onPageChange={updatePageInUrl}
+              onPageSizeChange={updatePageSizeInUrl}
+              pageSizeOptions={PAGE_SIZE_OPTIONS}
+              itemLabel="productos"
+            />
+          </CardContent>
+        </Card>
       </div>
 
       <ProductModal

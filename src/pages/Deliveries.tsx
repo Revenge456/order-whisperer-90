@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Search, Truck, MapPin, CheckCircle, Phone, User, MessageCircle } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -13,8 +14,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useActiveDeliveries, useDeliveryDrivers, useAssignDriver, useUpdateDelivery } from "@/hooks/useDeliveries";
-import { filterBySearch } from "@/lib/search-utils";
+import { TablePagination } from "@/components/ui/table-pagination";
+import {
+  usePaginatedDeliveries,
+  useDeliveryCounts,
+  useDeliveryDrivers,
+  useAssignDriver,
+  useUpdateDelivery,
+} from "@/hooks/useDeliveries";
 import type { Enums } from "@/integrations/supabase/types";
 
 type DeliveryStatus = Enums<'delivery_status'>;
@@ -28,32 +35,85 @@ const statusConfig: Record<DeliveryStatus, { label: string; style: string }> = {
   cancelado: { label: "Cancelado", style: "bg-muted text-muted-foreground" },
 };
 
-export default function Deliveries() {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+const PAGE_SIZE_OPTIONS = [25, 50, 100];
+const DEFAULT_PAGE_SIZE = 50;
 
-  const { data: deliveries, isLoading: deliveriesLoading } = useActiveDeliveries();
+export default function Deliveries() {
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const page = Math.max(1, Number(searchParams.get('page')) || 1);
+  const pageSize = (() => {
+    const ps = Number(searchParams.get('size')) || DEFAULT_PAGE_SIZE;
+    return PAGE_SIZE_OPTIONS.includes(ps) ? ps : DEFAULT_PAGE_SIZE;
+  })();
+
+  const [searchInput, setSearchInput] = useState(searchParams.get('q') ?? '');
+  const [debouncedSearch, setDebouncedSearch] = useState(searchInput);
+  const [statusFilter, setStatusFilter] = useState<string>(searchParams.get('status') ?? 'all');
+
+  // Debounce search
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchInput), 350);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
+  // Reset to page 1 + sync URL when filters change
+  useEffect(() => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('page', '1');
+      if (debouncedSearch) next.set('q', debouncedSearch); else next.delete('q');
+      if (statusFilter && statusFilter !== 'all') next.set('status', statusFilter); else next.delete('status');
+      return next;
+    }, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch, statusFilter]);
+
+  const updatePageInUrl = (nextPage: number) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('page', String(nextPage));
+      return next;
+    }, { replace: true });
+  };
+
+  const updatePageSizeInUrl = (nextSize: number) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('size', String(nextSize));
+      next.set('page', '1');
+      return next;
+    }, { replace: true });
+  };
+
+  const { data: paginated, isLoading: deliveriesLoading } = usePaginatedDeliveries({
+    page,
+    pageSize,
+    search: debouncedSearch,
+    status: statusFilter,
+  });
+  const { data: counts } = useDeliveryCounts();
   const { data: drivers } = useDeliveryDrivers();
   const assignDriver = useAssignDriver();
   const updateDelivery = useUpdateDelivery();
 
-  const filteredDeliveries = filterBySearch(
-    deliveries?.filter(d => statusFilter === "all" || d.status === statusFilter) || [],
-    searchTerm,
-    ['order_number', 'customer_name', 'driver_name']
-  );
+  const filteredDeliveries = paginated?.rows ?? [];
+  const total = paginated?.total ?? 0;
+  const totalPages = paginated?.totalPages ?? 1;
 
-  const activeDeliveries = deliveries?.filter(d => 
-    d.status && ['asignado', 'en_camino'].includes(d.status)
-  ).length || 0;
-  
-  const pendingAssignment = deliveries?.filter(d => d.status === 'sin_asignar').length || 0;
-  const completedToday = deliveries?.filter(d => d.status === 'entregado').length || 0;
+  // Snap back if page > totalPages
+  useEffect(() => {
+    if (!paginated) return;
+    if (page > paginated.totalPages) {
+      updatePageInUrl(paginated.totalPages);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paginated?.totalPages]);
 
   const handleAssignDriver = async (deliveryId: string, driverId: string) => {
     const driver = drivers?.find(d => d.id === driverId);
     if (!driver) return;
-    
+
     await assignDriver.mutateAsync({
       deliveryId,
       driverId,
@@ -97,7 +157,7 @@ export default function Deliveries() {
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">Sin Asignar</p>
               <p className="text-2xl font-bold text-warning">
-                {deliveriesLoading ? <Skeleton className="h-8 w-12" /> : pendingAssignment}
+                {!counts ? <Skeleton className="h-8 w-12" /> : counts.sinAsignar.toLocaleString('es-BO')}
               </p>
             </CardContent>
           </Card>
@@ -105,7 +165,7 @@ export default function Deliveries() {
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">En Ruta</p>
               <p className="text-2xl font-bold text-primary">
-                {deliveriesLoading ? <Skeleton className="h-8 w-12" /> : activeDeliveries}
+                {!counts ? <Skeleton className="h-8 w-12" /> : counts.enRuta.toLocaleString('es-BO')}
               </p>
             </CardContent>
           </Card>
@@ -113,7 +173,7 @@ export default function Deliveries() {
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">Entregados Hoy</p>
               <p className="text-2xl font-bold text-success">
-                {deliveriesLoading ? <Skeleton className="h-8 w-12" /> : completedToday}
+                {!counts ? <Skeleton className="h-8 w-12" /> : counts.entregadosHoy.toLocaleString('es-BO')}
               </p>
             </CardContent>
           </Card>
@@ -137,8 +197,8 @@ export default function Deliveries() {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
                       placeholder="Buscar por pedido, cliente o repartidor..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
+                      value={searchInput}
+                      onChange={(e) => setSearchInput(e.target.value)}
                       className="pl-10 bg-secondary/50 border-border/50"
                     />
                   </div>
@@ -159,120 +219,139 @@ export default function Deliveries() {
               </CardContent>
             </Card>
 
-            {deliveriesLoading ? (
-              <div className="space-y-3">
-                {[...Array(4)].map((_, i) => (
-                  <Skeleton key={i} className="h-32 w-full" />
-                ))}
-              </div>
-            ) : filteredDeliveries.length === 0 ? (
-              <Card className="glass border-border/50">
-                <CardContent className="py-12 text-center">
-                  <Truck className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">No hay entregas que mostrar</p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="space-y-3">
-                {filteredDeliveries.map((delivery) => (
-                  <Card key={delivery.delivery_id} className="glass border-border/50 hover:border-primary/30 transition-colors">
-                    <CardContent className="pt-6">
-                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                        <div className="space-y-3">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                              <Truck className="w-5 h-5 text-primary" />
-                            </div>
-                            <div>
-                              <p className="font-medium text-foreground">{delivery.order_number}</p>
-                              <Badge variant="outline" className={statusConfig[delivery.status as DeliveryStatus]?.style}>
-                                {statusConfig[delivery.status as DeliveryStatus]?.label || delivery.status}
-                              </Badge>
-                            </div>
-                          </div>
-
-                          <div className="space-y-2 text-sm">
-                            <div className="flex items-start gap-2">
-                              <User className="w-4 h-4 text-muted-foreground mt-0.5" />
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2">
-                                  <p className="text-foreground">{delivery.customer_name || 'Sin nombre'}</p>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-6 w-6 text-success hover:text-success hover:bg-success/10"
-                                    onClick={() => handleContactCustomer(delivery.customer_phone)}
-                                    title="WhatsApp cliente"
-                                  >
-                                    <MessageCircle className="w-4 h-4" />
-                                  </Button>
+            <Card className="glass border-border/50">
+              <CardHeader>
+                <CardTitle>Lista de Entregas</CardTitle>
+                <CardDescription>
+                  {total.toLocaleString('es-BO')} entrega(s) encontrada(s)
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {deliveriesLoading ? (
+                  <div className="space-y-3">
+                    {[...Array(4)].map((_, i) => (
+                      <Skeleton key={i} className="h-32 w-full" />
+                    ))}
+                  </div>
+                ) : filteredDeliveries.length === 0 ? (
+                  <div className="py-12 text-center">
+                    <Truck className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground">No hay entregas que mostrar</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {filteredDeliveries.map((delivery) => (
+                      <Card key={delivery.delivery_id} className="glass border-border/50 hover:border-primary/30 transition-colors">
+                        <CardContent className="pt-6">
+                          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                            <div className="space-y-3">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                                  <Truck className="w-5 h-5 text-primary" />
                                 </div>
-                                <p className="text-muted-foreground">{delivery.customer_phone}</p>
+                                <div>
+                                  <p className="font-medium text-foreground">{delivery.order_number}</p>
+                                  <Badge variant="outline" className={statusConfig[delivery.status as DeliveryStatus]?.style}>
+                                    {statusConfig[delivery.status as DeliveryStatus]?.label || delivery.status}
+                                  </Badge>
+                                </div>
+                              </div>
+
+                              <div className="space-y-2 text-sm">
+                                <div className="flex items-start gap-2">
+                                  <User className="w-4 h-4 text-muted-foreground mt-0.5" />
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2">
+                                      <p className="text-foreground">{delivery.customer_name || 'Sin nombre'}</p>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-6 w-6 text-success hover:text-success hover:bg-success/10"
+                                        onClick={() => handleContactCustomer(delivery.customer_phone)}
+                                        title="WhatsApp cliente"
+                                      >
+                                        <MessageCircle className="w-4 h-4" />
+                                      </Button>
+                                    </div>
+                                    <p className="text-muted-foreground">{delivery.customer_phone}</p>
+                                  </div>
+                                </div>
+                                <div className="flex items-start gap-2">
+                                  <MapPin className="w-4 h-4 text-muted-foreground mt-0.5" />
+                                  <p className="text-muted-foreground">{delivery.address}</p>
+                                </div>
                               </div>
                             </div>
-                            <div className="flex items-start gap-2">
-                              <MapPin className="w-4 h-4 text-muted-foreground mt-0.5" />
-                              <p className="text-muted-foreground">{delivery.address}</p>
+
+                            <div className="flex flex-col items-end gap-2">
+                              {delivery.total && (
+                                <p className="font-bold text-lg text-foreground">
+                                  Bs. {delivery.total.toLocaleString()}
+                                </p>
+                              )}
+
+                              {delivery.driver_name ? (
+                                <div className="text-right text-sm space-y-1">
+                                  <div className="flex items-center gap-2 justify-end">
+                                    <p className="text-foreground font-medium">{delivery.driver_name}</p>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-8 gap-1 text-success border-success/50 hover:bg-success/10"
+                                      onClick={() => handleContactDriver(delivery.driver_phone)}
+                                    >
+                                      <MessageCircle className="w-4 h-4" />
+                                      Contactar
+                                    </Button>
+                                  </div>
+                                  <p className="text-muted-foreground">{delivery.driver_phone}</p>
+                                </div>
+                              ) : (
+                                <Select onValueChange={(value) => delivery.delivery_id && handleAssignDriver(delivery.delivery_id, value)}>
+                                  <SelectTrigger className="w-48 bg-secondary/50 border-border/50">
+                                    <SelectValue placeholder="Asignar repartidor" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {drivers?.map((driver) => (
+                                      <SelectItem key={driver.id} value={driver.id}>
+                                        {driver.full_name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              )}
+
+                              {delivery.status === 'en_camino' && (
+                                <Button
+                                  size="sm"
+                                  className="bg-success hover:bg-success/90"
+                                  onClick={() => delivery.delivery_id && handleMarkDelivered(delivery.delivery_id)}
+                                  disabled={updateDelivery.isPending}
+                                >
+                                  <CheckCircle className="w-4 h-4 mr-1" />
+                                  Marcar Entregado
+                                </Button>
+                              )}
                             </div>
                           </div>
-                        </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
 
-                        <div className="flex flex-col items-end gap-2">
-                          {delivery.total && (
-                            <p className="font-bold text-lg text-foreground">
-                              Bs. {delivery.total.toLocaleString()}
-                            </p>
-                          )}
-
-                          {delivery.driver_name ? (
-                            <div className="text-right text-sm space-y-1">
-                              <div className="flex items-center gap-2 justify-end">
-                                <p className="text-foreground font-medium">{delivery.driver_name}</p>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-8 gap-1 text-success border-success/50 hover:bg-success/10"
-                                  onClick={() => handleContactDriver(delivery.driver_phone)}
-                                >
-                                  <MessageCircle className="w-4 h-4" />
-                                  Contactar
-                                </Button>
-                              </div>
-                              <p className="text-muted-foreground">{delivery.driver_phone}</p>
-                            </div>
-                          ) : (
-                            <Select onValueChange={(value) => delivery.delivery_id && handleAssignDriver(delivery.delivery_id, value)}>
-                              <SelectTrigger className="w-48 bg-secondary/50 border-border/50">
-                                <SelectValue placeholder="Asignar repartidor" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {drivers?.map((driver) => (
-                                  <SelectItem key={driver.id} value={driver.id}>
-                                    {driver.full_name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          )}
-
-                          {delivery.status === 'en_camino' && (
-                            <Button 
-                              size="sm" 
-                              className="bg-success hover:bg-success/90"
-                              onClick={() => delivery.delivery_id && handleMarkDelivered(delivery.delivery_id)}
-                              disabled={updateDelivery.isPending}
-                            >
-                              <CheckCircle className="w-4 h-4 mr-1" />
-                              Marcar Entregado
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
+                <TablePagination
+                  page={page}
+                  pageSize={pageSize}
+                  total={total}
+                  totalPages={totalPages}
+                  onPageChange={updatePageInUrl}
+                  onPageSizeChange={updatePageSizeInUrl}
+                  pageSizeOptions={PAGE_SIZE_OPTIONS}
+                  itemLabel="entregas"
+                />
+              </CardContent>
+            </Card>
           </div>
 
           {/* Delivery Drivers */}

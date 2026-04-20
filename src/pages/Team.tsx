@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -13,6 +13,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,21 +36,42 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Switch } from "@/components/ui/switch";
+import { Skeleton } from "@/components/ui/skeleton";
+import { TablePagination } from "@/components/ui/table-pagination";
 import { Plus, Search, MoreHorizontal, Pencil, Trash2, Users, Shield, UserCheck, Key, Settings } from "lucide-react";
-import { useTeam, TeamMember, CreateTeamMemberData, UpdateTeamMemberData } from "@/hooks/useTeam";
+import {
+  useTeam,
+  usePaginatedTeam,
+  useTeamCounts,
+  TeamMember,
+  CreateTeamMemberData,
+  UpdateTeamMemberData,
+} from "@/hooks/useTeam";
 import { TeamMemberModal } from "@/components/modals/TeamMemberModal";
 import { InviteUserModal } from "@/components/modals/InviteUserModal";
 import { PermissionsModal } from "@/components/modals/PermissionsModal";
-import { filterBySearch } from "@/lib/search-utils";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useIsAdmin } from "@/hooks/useAuth";
 
+const PAGE_SIZE_OPTIONS = [25, 50, 100];
+const DEFAULT_PAGE_SIZE = 50;
+
 export default function Team() {
-  const { teamMembers, isLoading, createMember, updateMember, deleteMember } = useTeam();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const page = Math.max(1, Number(searchParams.get('page')) || 1);
+  const pageSize = (() => {
+    const ps = Number(searchParams.get('size')) || DEFAULT_PAGE_SIZE;
+    return PAGE_SIZE_OPTIONS.includes(ps) ? ps : DEFAULT_PAGE_SIZE;
+  })();
+
+  const [searchInput, setSearchInput] = useState(searchParams.get('q') ?? '');
+  const [debouncedSearch, setDebouncedSearch] = useState(searchInput);
+  const [roleFilter, setRoleFilter] = useState<string>(searchParams.get('role') ?? 'all');
+
+  const { createMember, updateMember, deleteMember } = useTeam();
   const isAdmin = useIsAdmin();
-  const [searchQuery, setSearchQuery] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [isPermissionsModalOpen, setIsPermissionsModalOpen] = useState(false);
@@ -51,11 +79,61 @@ export default function Team() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [memberToDelete, setMemberToDelete] = useState<TeamMember | null>(null);
 
-  const filteredMembers = filterBySearch(
-    teamMembers,
-    searchQuery,
-    ["full_name", "email", "role"]
-  );
+  // Debounce search
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchInput), 350);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
+  // Reset to page 1 + sync URL
+  useEffect(() => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('page', '1');
+      if (debouncedSearch) next.set('q', debouncedSearch); else next.delete('q');
+      if (roleFilter && roleFilter !== 'all') next.set('role', roleFilter); else next.delete('role');
+      return next;
+    }, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch, roleFilter]);
+
+  const updatePageInUrl = (nextPage: number) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('page', String(nextPage));
+      return next;
+    }, { replace: true });
+  };
+
+  const updatePageSizeInUrl = (nextSize: number) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('size', String(nextSize));
+      next.set('page', '1');
+      return next;
+    }, { replace: true });
+  };
+
+  const { data: paginated, isLoading } = usePaginatedTeam({
+    page,
+    pageSize,
+    search: debouncedSearch,
+    role: roleFilter,
+  });
+  const { data: counts } = useTeamCounts();
+
+  const filteredMembers = paginated?.rows ?? [];
+  const total = paginated?.total ?? 0;
+  const totalPages = paginated?.totalPages ?? 1;
+
+  // Snap back if page > totalPages
+  useEffect(() => {
+    if (!paginated) return;
+    if (page > paginated.totalPages) {
+      updatePageInUrl(paginated.totalPages);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paginated?.totalPages]);
 
   const handleCreateMember = () => {
     setSelectedMember(null);
@@ -113,12 +191,6 @@ export default function Team() {
     );
   };
 
-  const stats = {
-    total: teamMembers.length,
-    admins: teamMembers.filter((m) => m.role === "admin").length,
-    active: teamMembers.filter((m) => m.is_active).length,
-  };
-
   return (
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
@@ -157,7 +229,9 @@ export default function Team() {
                   <Users className="w-6 h-6 text-primary" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-foreground">{stats.total}</p>
+                  <p className="text-2xl font-bold text-foreground">
+                    {!counts ? <Skeleton className="h-8 w-16" /> : counts.total.toLocaleString('es-BO')}
+                  </p>
                   <p className="text-sm text-muted-foreground">Total Miembros</p>
                 </div>
               </div>
@@ -170,7 +244,9 @@ export default function Team() {
                   <Shield className="w-6 h-6 text-warning" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-foreground">{stats.admins}</p>
+                  <p className="text-2xl font-bold text-foreground">
+                    {!counts ? <Skeleton className="h-8 w-16" /> : counts.admins.toLocaleString('es-BO')}
+                  </p>
                   <p className="text-sm text-muted-foreground">Administradores</p>
                 </div>
               </div>
@@ -183,7 +259,9 @@ export default function Team() {
                   <UserCheck className="w-6 h-6 text-success" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-foreground">{stats.active}</p>
+                  <p className="text-2xl font-bold text-foreground">
+                    {!counts ? <Skeleton className="h-8 w-16" /> : counts.active.toLocaleString('es-BO')}
+                  </p>
                   <p className="text-sm text-muted-foreground">Activos</p>
                 </div>
               </div>
@@ -195,15 +273,33 @@ export default function Team() {
         <Card className="glass border-border/50">
           <CardHeader>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <CardTitle className="text-lg">Miembros del Equipo</CardTitle>
-              <div className="relative w-full sm:w-80">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                <Input
-                  placeholder="Buscar por nombre, email o rol..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 bg-input border-border"
-                />
+              <div>
+                <CardTitle className="text-lg">Miembros del Equipo</CardTitle>
+                <CardDescription>
+                  {total.toLocaleString('es-BO')} miembro(s) encontrado(s)
+                </CardDescription>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                <div className="relative w-full sm:w-72">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                  <Input
+                    placeholder="Buscar por nombre o email..."
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    className="pl-10 bg-input border-border"
+                  />
+                </div>
+                <Select value={roleFilter} onValueChange={setRoleFilter}>
+                  <SelectTrigger className="w-full sm:w-44 bg-input border-border">
+                    <SelectValue placeholder="Rol" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos los roles</SelectItem>
+                    <SelectItem value="admin">Administrador</SelectItem>
+                    <SelectItem value="operator">Operador</SelectItem>
+                    <SelectItem value="viewer">Visualizador</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </CardHeader>
@@ -214,7 +310,7 @@ export default function Team() {
               </div>
             ) : filteredMembers.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                {searchQuery
+                {debouncedSearch
                   ? "No se encontraron miembros con ese criterio"
                   : "No hay miembros del equipo aún"}
               </div>
@@ -293,6 +389,17 @@ export default function Team() {
                 </Table>
               </div>
             )}
+
+            <TablePagination
+              page={page}
+              pageSize={pageSize}
+              total={total}
+              totalPages={totalPages}
+              onPageChange={updatePageInUrl}
+              onPageSizeChange={updatePageSizeInUrl}
+              pageSizeOptions={PAGE_SIZE_OPTIONS}
+              itemLabel="miembros"
+            />
           </CardContent>
         </Card>
       </div>
