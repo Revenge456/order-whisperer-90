@@ -88,6 +88,7 @@ export default function Orders() {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [deleteOrderId, setDeleteOrderId] = useState<string | null>(null);
+  const [highlightedRowId, setHighlightedRowId] = useState<string | null>(null);
 
   // Sync from URL when navigating from notifications
   useEffect(() => {
