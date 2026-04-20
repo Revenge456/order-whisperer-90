@@ -163,7 +163,7 @@ export function AppSidebar() {
         {!isCollapsed && (
           <div className="glass rounded-lg p-3">
             <p className="text-xs text-muted-foreground text-center">
-              v1.0.0 • Bolivia Fitness
+              v1.2.0 • Bolivia Fitness
             </p>
           </div>
         )}
