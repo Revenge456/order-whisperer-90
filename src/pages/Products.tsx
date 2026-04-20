@@ -30,6 +30,7 @@ import { TablePagination } from "@/components/ui/table-pagination";
 import { useColumnDefinitions } from "@/hooks/useColumnDefinitions";
 import { useIsAdmin } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Product = Tables<'products'>;
@@ -127,6 +128,39 @@ export default function Products() {
     window.addEventListener('product-image-lightbox', handler);
     return () => window.removeEventListener('product-image-lightbox', handler);
   }, []);
+
+  // Handle ?highlight={product_id} from global search → open detail sheet
+  const highlightId = searchParams.get('highlight');
+  useEffect(() => {
+    if (!highlightId) return;
+    let cancelled = false;
+    (async () => {
+      // Try to find in current page first
+      const local = rows.find((p: any) => p.id === highlightId);
+      if (local) {
+        setSelectedRecord(local as Product);
+        setIsDetailOpen(true);
+      } else {
+        // Fetch directly by id (works even if it's on another page)
+        const { data } = await supabase
+          .from('products')
+          .select('*, product_categories(name)')
+          .eq('id', highlightId)
+          .maybeSingle();
+        if (cancelled || !data) return;
+        setSelectedRecord(data as unknown as Product);
+        setIsDetailOpen(true);
+      }
+      // Clean URL param
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('highlight');
+        return next;
+      }, { replace: true });
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [highlightId]);
 
   const handleNewProduct = () => {
     setEditingProduct(null);

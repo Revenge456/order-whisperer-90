@@ -88,6 +88,7 @@ export default function Orders() {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [deleteOrderId, setDeleteOrderId] = useState<string | null>(null);
+  const [highlightedRowId, setHighlightedRowId] = useState<string | null>(null);
 
   // Sync from URL when navigating from notifications
   useEffect(() => {
@@ -164,6 +165,40 @@ export default function Orders() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paginated?.totalPages]);
+
+  // Handle ?highlight={order_id} from global search
+  const highlightId = searchParams.get('highlight');
+  useEffect(() => {
+    if (!highlightId || ordersLoading) return;
+    const found = filteredOrders.find((o) => o.id === highlightId);
+    if (found) {
+      if (activeTab !== 'orders') handleTabChange('orders');
+      setExpandedOrderId(highlightId);
+      setHighlightedRowId(highlightId);
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('highlight');
+        return next;
+      }, { replace: true });
+      setTimeout(() => {
+        const el = document.querySelector(`[data-order-id="${highlightId}"]`);
+        el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
+      setTimeout(() => setHighlightedRowId(null), 2500);
+    } else if (debouncedSearch || statusFilter !== 'all' || page !== 1) {
+      // Not in current page → clear filters and go to page 1, keep highlight for next render
+      setSearchInput('');
+      setStatusFilter('all');
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('search');
+        next.delete('status');
+        next.set('page', '1');
+        return next;
+      }, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [highlightId, ordersLoading, filteredOrders]);
 
   const filteredPayments = filterBySearch(
     pendingPayments || [],
@@ -375,7 +410,8 @@ export default function Orders() {
                               <>
                                 <TableRow
                                   key={order.id}
-                                  className="border-border/50 hover:bg-secondary/30 cursor-pointer transition-colors"
+                                  data-order-id={order.id}
+                                  className={`border-border/50 hover:bg-secondary/30 cursor-pointer transition-colors ${highlightedRowId === order.id ? 'ring-2 ring-primary ring-inset bg-primary/10' : ''}`}
                                   onClick={() => setExpandedOrderId(isExpanded ? null : order.id)}
                                 >
                                   <TableCell>
