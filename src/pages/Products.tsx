@@ -57,6 +57,13 @@ export default function Products() {
   const [selectedRecord, setSelectedRecord] = useState<Product | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<{ url: string; name: string } | null>(null);
+  const [infoDraft, setInfoDraft] = useState('');
+
+  // Sync info textarea when selectedRecord changes
+  useEffect(() => {
+    const cf = (selectedRecord?.custom_fields || {}) as Record<string, unknown>;
+    setInfoDraft(typeof cf.info === 'string' ? cf.info : '');
+  }, [selectedRecord?.id]);
 
   // Debounce search input
   useEffect(() => {
