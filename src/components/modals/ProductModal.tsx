@@ -50,11 +50,14 @@ export function ProductModal({ open, onOpenChange, product }: ProductModalProps)
     category_id: '',
     is_active: true,
     image_url: '' as string | null,
+    info: '',
     custom_fields: {} as Record<string, string | number | boolean>,
   });
 
   useEffect(() => {
     if (product) {
+      const productCustomFields = ((product as any).custom_fields || {}) as Record<string, string | number | boolean>;
+      const { info: _info, ...restCustomFields } = productCustomFields;
       setFormData({
         name: product.name || '',
         description: product.description || '',
@@ -64,7 +67,8 @@ export function ProductModal({ open, onOpenChange, product }: ProductModalProps)
         category_id: product.category_id || '',
         is_active: product.is_active ?? true,
         image_url: product.image_url || null,
-        custom_fields: (product as any).custom_fields || {},
+        info: typeof _info === 'string' ? _info : '',
+        custom_fields: restCustomFields,
       });
     } else {
       setFormData({
@@ -76,6 +80,7 @@ export function ProductModal({ open, onOpenChange, product }: ProductModalProps)
         category_id: '',
         is_active: true,
         image_url: null,
+        info: '',
         custom_fields: {},
       });
     }
@@ -88,6 +93,14 @@ export function ProductModal({ open, onOpenChange, product }: ProductModalProps)
       return;
     }
 
+    const mergedCustomFields: Record<string, string | number | boolean> = { ...formData.custom_fields };
+    const trimmedInfo = formData.info.trim();
+    if (trimmedInfo) {
+      mergedCustomFields.info = trimmedInfo;
+    } else {
+      delete mergedCustomFields.info;
+    }
+
     const productData: Record<string, unknown> = {
       name: formData.name,
       description: formData.description || null,
@@ -97,7 +110,7 @@ export function ProductModal({ open, onOpenChange, product }: ProductModalProps)
       category_id: formData.category_id || null,
       is_active: formData.is_active,
       image_url: formData.image_url || null,
-      custom_fields: formData.custom_fields,
+      custom_fields: mergedCustomFields,
     };
 
     if (shouldResetPhotoId) {
@@ -240,6 +253,17 @@ export function ProductModal({ open, onOpenChange, product }: ProductModalProps)
             </div>
 
             <Separator className="bg-border" />
+
+            <div className="grid gap-2">
+              <Label htmlFor="info">Información del producto</Label>
+              <Textarea
+                id="info"
+                value={formData.info}
+                onChange={(e) => setFormData(prev => ({ ...prev, info: e.target.value }))}
+                placeholder="Beneficios, modo de uso, ingredientes, contraindicaciones... Esta información la leerá el chatbot cuando el cliente pregunte por detalles del producto."
+                className="bg-input border-border min-h-[120px]"
+              />
+            </div>
 
             <CustomFieldsManager
               fields={formData.custom_fields}
