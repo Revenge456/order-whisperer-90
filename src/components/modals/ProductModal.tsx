@@ -93,6 +93,14 @@ export function ProductModal({ open, onOpenChange, product }: ProductModalProps)
       return;
     }
 
+    const mergedCustomFields: Record<string, string | number | boolean> = { ...formData.custom_fields };
+    const trimmedInfo = formData.info.trim();
+    if (trimmedInfo) {
+      mergedCustomFields.info = trimmedInfo;
+    } else {
+      delete mergedCustomFields.info;
+    }
+
     const productData: Record<string, unknown> = {
       name: formData.name,
       description: formData.description || null,
@@ -102,7 +110,7 @@ export function ProductModal({ open, onOpenChange, product }: ProductModalProps)
       category_id: formData.category_id || null,
       is_active: formData.is_active,
       image_url: formData.image_url || null,
-      custom_fields: formData.custom_fields,
+      custom_fields: mergedCustomFields,
     };
 
     if (shouldResetPhotoId) {
