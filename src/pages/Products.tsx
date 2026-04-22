@@ -367,16 +367,47 @@ export default function Products() {
         canDelete={isAdmin}
         onDelete={handleDelete}
         customContent={
-          selectedRecord && isAdmin ? (
-            <ProductImageUpload
-              imageUrl={selectedRecord.image_url}
-              productId={selectedRecord.id}
-              onImageChange={handleImageChange}
-            />
-          ) : selectedRecord?.image_url ? (
-            <div className="grid gap-2">
-              <Label>Imagen del producto</Label>
-              <img src={selectedRecord.image_url} alt={selectedRecord.name} className="w-full h-40 rounded-lg object-cover border border-border" />
+          selectedRecord ? (
+            <div className="grid gap-4">
+              {isAdmin ? (
+                <ProductImageUpload
+                  imageUrl={selectedRecord.image_url}
+                  productId={selectedRecord.id}
+                  onImageChange={handleImageChange}
+                />
+              ) : selectedRecord.image_url ? (
+                <div className="grid gap-2">
+                  <Label>Imagen del producto</Label>
+                  <img src={selectedRecord.image_url} alt={selectedRecord.name} className="w-full h-40 rounded-lg object-cover border border-border" />
+                </div>
+              ) : null}
+
+              {(isAdmin || infoDraft) && (
+                <div className="grid gap-2">
+                  <Label htmlFor="product-info">Información del producto</Label>
+                  <Textarea
+                    id="product-info"
+                    value={infoDraft}
+                    onChange={(e) => setInfoDraft(e.target.value)}
+                    onBlur={() => {
+                      const currentInfo = ((selectedRecord?.custom_fields || {}) as Record<string, unknown>).info;
+                      const currentStr = typeof currentInfo === 'string' ? currentInfo : '';
+                      const trimmed = infoDraft.trim();
+                      if (trimmed === currentStr) return;
+                      const baseCf = { ...((selectedRecord?.custom_fields || {}) as Record<string, unknown>) };
+                      if (trimmed) {
+                        baseCf.info = trimmed;
+                      } else {
+                        delete baseCf.info;
+                      }
+                      handleSave({ custom_fields: baseCf });
+                    }}
+                    disabled={!isAdmin}
+                    placeholder="Beneficios, modo de uso, ingredientes, contraindicaciones... Esta información la leerá el chatbot cuando el cliente pregunte por detalles del producto."
+                    className="min-h-[120px]"
+                  />
+                </div>
+              )}
             </div>
           ) : null
         }
