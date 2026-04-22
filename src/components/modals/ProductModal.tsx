@@ -260,7 +260,7 @@ export function ProductModal({ open, onOpenChange, product }: ProductModalProps)
                 id="info"
                 value={formData.info}
                 onChange={(e) => setFormData(prev => ({ ...prev, info: e.target.value }))}
-                placeholder="Beneficios, modo de uso, ingredientes, contraindicaciones... Esta información la leerá el chatbot cuando el cliente pregunte por detalles del producto."
+                placeholder="Esta información la leerá el agente IA cuando el cliente pregunte por detalles del producto."
                 className="bg-input border-border min-h-[120px]"
               />
             </div>

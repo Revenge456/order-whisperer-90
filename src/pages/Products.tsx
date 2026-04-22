@@ -403,7 +403,7 @@ export default function Products() {
                       handleSave({ custom_fields: baseCf });
                     }}
                     disabled={!isAdmin}
-                    placeholder="Beneficios, modo de uso, ingredientes, contraindicaciones... Esta información la leerá el chatbot cuando el cliente pregunte por detalles del producto."
+                    placeholder="Esta información la leerá el agente IA cuando el cliente pregunte por detalles del producto."
                     className="min-h-[120px]"
                   />
                 </div>
