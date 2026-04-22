@@ -50,11 +50,14 @@ export function ProductModal({ open, onOpenChange, product }: ProductModalProps)
     category_id: '',
     is_active: true,
     image_url: '' as string | null,
+    info: '',
     custom_fields: {} as Record<string, string | number | boolean>,
   });
 
   useEffect(() => {
     if (product) {
+      const productCustomFields = ((product as any).custom_fields || {}) as Record<string, string | number | boolean>;
+      const { info: _info, ...restCustomFields } = productCustomFields;
       setFormData({
         name: product.name || '',
         description: product.description || '',
@@ -64,7 +67,8 @@ export function ProductModal({ open, onOpenChange, product }: ProductModalProps)
         category_id: product.category_id || '',
         is_active: product.is_active ?? true,
         image_url: product.image_url || null,
-        custom_fields: (product as any).custom_fields || {},
+        info: typeof _info === 'string' ? _info : '',
+        custom_fields: restCustomFields,
       });
     } else {
       setFormData({
@@ -76,6 +80,7 @@ export function ProductModal({ open, onOpenChange, product }: ProductModalProps)
         category_id: '',
         is_active: true,
         image_url: null,
+        info: '',
         custom_fields: {},
       });
     }
