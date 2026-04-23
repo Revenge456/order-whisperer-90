@@ -555,7 +555,18 @@ export default function Orders() {
                                             <div className="bg-background/60 rounded-lg px-3 py-2 border border-border/30 space-y-2">
                                               <div>
                                                 <p className="text-xs text-muted-foreground">Dirección</p>
-                                                <p className="text-sm text-foreground">{order.delivery_address || order.customer_address || '—'}</p>
+                                                {order.shipping_address ? (
+                                                  <p className="text-sm text-foreground">{order.shipping_address}</p>
+                                                ) : order.delivery_address ? (
+                                                  <p className="text-sm text-foreground">{order.delivery_address}</p>
+                                                ) : order.customer_address ? (
+                                                  <p className="text-sm text-foreground">
+                                                    {order.customer_address}
+                                                    <span className="ml-1 text-xs text-muted-foreground italic">(dirección del cliente)</span>
+                                                  </p>
+                                                ) : (
+                                                  <p className="text-sm text-foreground">—</p>
+                                                )}
                                               </div>
                                               {order.location_url && (
                                                 <a

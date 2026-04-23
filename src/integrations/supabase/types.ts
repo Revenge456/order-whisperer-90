@@ -1367,6 +1367,7 @@ export type Database = {
           payment_status: Database["public"]["Enums"]["payment_status"] | null
           products: Json | null
           screenshot_url: string | null
+          shipping_address: string | null
           status: Database["public"]["Enums"]["order_status"] | null
           total: number | null
           updated_at: string | null
