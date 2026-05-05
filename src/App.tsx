@@ -10,6 +10,7 @@ import Customers from "./pages/Customers";
 import Orders from "./pages/Orders";
 import Deliveries from "./pages/Deliveries";
 import Products from "./pages/Products";
+import Sucursales from "./pages/Sucursales";
 import Reports from "./pages/Reports";
 import Team from "./pages/Team";
 import ChatHistory from "./pages/ChatHistory";
@@ -58,6 +59,11 @@ const App = () => (
           <Route path="/products" element={
             <ProtectedRoute pageKey="products">
               <Products />
+            </ProtectedRoute>
+          } />
+          <Route path="/sucursales" element={
+            <ProtectedRoute pageKey="products">
+              <Sucursales />
             </ProtectedRoute>
           } />
           <Route path="/reports" element={

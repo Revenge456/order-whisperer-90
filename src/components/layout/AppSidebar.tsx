@@ -9,7 +9,8 @@ import {
   Dumbbell,
   MessageSquare,
   Megaphone,
-  Bell
+  Bell,
+  MapPin
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
@@ -34,6 +35,7 @@ const mainNavItems = [
   { title: "Pedidos", url: "/orders", icon: ShoppingCart, pageKey: "orders" },
   { title: "Entregas", url: "/deliveries", icon: Truck, pageKey: "deliveries" },
   { title: "Productos", url: "/products", icon: Package, pageKey: "products" },
+  { title: "Sucursales", url: "/sucursales", icon: MapPin, pageKey: "products" },
   { title: "Notificaciones", url: "/notifications", icon: Bell, pageKey: "dashboard" },
 ];
 
