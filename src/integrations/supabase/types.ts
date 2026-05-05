@@ -789,6 +789,7 @@ export type Database = {
         Row: {
           category_name: string
           id: string
+          product_id: string | null
           products_count: number
           sent_at: string
           user_id: string
@@ -796,6 +797,7 @@ export type Database = {
         Insert: {
           category_name: string
           id?: string
+          product_id?: string | null
           products_count?: number
           sent_at?: string
           user_id: string
@@ -803,6 +805,7 @@ export type Database = {
         Update: {
           category_name?: string
           id?: string
+          product_id?: string | null
           products_count?: number
           sent_at?: string
           user_id?: string
@@ -900,22 +903,58 @@ export type Database = {
       }
       sucursales: {
         Row: {
+          aliases: string[] | null
+          coming_soon: boolean | null
           descripcion: string | null
-          direccion: string
+          direccion: string | null
           id: number
+          is_active: boolean | null
           nombre: string
+          photo_urls: Json | null
+          sort_order: number | null
+        }
+        Insert: {
+          aliases?: string[] | null
+          coming_soon?: boolean | null
+          descripcion?: string | null
+          direccion?: string | null
+          id?: number
+          is_active?: boolean | null
+          nombre: string
+          photo_urls?: Json | null
+          sort_order?: number | null
+        }
+        Update: {
+          aliases?: string[] | null
+          coming_soon?: boolean | null
+          descripcion?: string | null
+          direccion?: string | null
+          id?: number
+          is_active?: boolean | null
+          nombre?: string
+          photo_urls?: Json | null
+          sort_order?: number | null
+        }
+        Relationships: []
+      }
+      sucursales_backup_2026_05_05: {
+        Row: {
+          descripcion: string | null
+          direccion: string | null
+          id: number | null
+          nombre: string | null
         }
         Insert: {
           descripcion?: string | null
-          direccion: string
-          id?: number
-          nombre: string
+          direccion?: string | null
+          id?: number | null
+          nombre?: string | null
         }
         Update: {
           descripcion?: string | null
-          direccion?: string
-          id?: number
-          nombre?: string
+          direccion?: string | null
+          id?: number | null
+          nombre?: string | null
         }
         Relationships: []
       }
