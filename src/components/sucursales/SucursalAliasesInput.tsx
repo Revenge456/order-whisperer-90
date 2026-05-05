@@ -33,7 +33,7 @@ export function SucursalAliasesInput({ value, onChange }: Props) {
         ))}
       </div>
       <Input
-        placeholder="Escribí un alias y presioná Enter"
+        placeholder="Escribe un alias y presiona Enter"
         value={input}
         onChange={(e) => setInput(e.target.value)}
         onKeyDown={(e) => {
