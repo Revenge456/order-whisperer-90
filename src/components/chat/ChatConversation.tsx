@@ -168,6 +168,23 @@ export function ChatConversation({
           </div>
         ) : (
           <div className="space-y-3">
+            {hasOlderMessages && (
+              <div className="flex justify-center py-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => loadOlderMessages?.()}
+                  disabled={isLoadingOlder}
+                  className="text-xs text-muted-foreground"
+                >
+                  {isLoadingOlder ? (
+                    <><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Cargando...</>
+                  ) : (
+                    "Cargar mensajes anteriores"
+                  )}
+                </Button>
+              </div>
+            )}
             {messages.map((msg, idx) => {
               const isOutgoing = msg.message_type === 'outgoing';
               const showDate =
