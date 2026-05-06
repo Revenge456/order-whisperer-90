@@ -5,9 +5,24 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Search, Bot, MessageSquare, CheckCircle, ShoppingCart, Eye, ChevronLeft, ChevronRight } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { format, isToday, isYesterday, differenceInMinutes, isThisWeek, isThisYear } from "date-fns";
 import { es } from "date-fns/locale";
 import type { ChatSummary, ChatFilter } from "@/hooks/useChatHistory";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+function formatWhatsAppTime(dateStr: string): string {
+  if (!dateStr) return "";
+  const date = new Date(dateStr);
+  const now = new Date();
+  const mins = differenceInMinutes(now, date);
+
+  if (mins < 60) return `Hace ${Math.max(1, mins)} min`;
+  if (isToday(date)) return format(date, "HH:mm");
+  if (isYesterday(date)) return "Ayer";
+  if (isThisWeek(date, { locale: es })) return format(date, "EEE", { locale: es }).replace(/^\w/, c => c.toUpperCase());
+  if (isThisYear(date)) return format(date, "d MMM", { locale: es });
+  return format(date, "d/M/yyyy");
+}
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface ChatListProps {
