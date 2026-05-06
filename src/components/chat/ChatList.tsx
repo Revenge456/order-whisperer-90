@@ -1,9 +1,10 @@
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Search, Bot, MessageSquare, CheckCircle, ShoppingCart, Eye } from "lucide-react";
+import { Search, Bot, MessageSquare, CheckCircle, ShoppingCart, Eye, ChevronLeft, ChevronRight } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import type { ChatSummary, ChatFilter } from "@/hooks/useChatHistory";
@@ -19,6 +20,9 @@ interface ChatListProps {
   filterStatus: ChatFilter;
   onFilterChange: (value: ChatFilter) => void;
   totalCount?: number;
+  page?: number;
+  totalPages?: number;
+  onPageChange?: (page: number) => void;
 }
 
 export function ChatList({
@@ -31,6 +35,9 @@ export function ChatList({
   filterStatus,
   onFilterChange,
   totalCount,
+  page = 0,
+  totalPages = 1,
+  onPageChange,
 }: ChatListProps) {
   const badgeCount = totalCount ?? chats.length;
   return (
@@ -152,6 +159,33 @@ export function ChatList({
           </div>
         )}
       </ScrollArea>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between px-3 py-2 border-t border-border text-xs text-muted-foreground">
+          <span>Pág. {page + 1}/{totalPages}</span>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              disabled={page === 0}
+              onClick={() => onPageChange?.(page - 1)}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              disabled={page >= totalPages - 1}
+              onClick={() => onPageChange?.(page + 1)}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
