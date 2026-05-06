@@ -127,11 +127,18 @@ export function ChatList({
                 <button
                   key={chat.customer_id}
                   onClick={() => onSelect(chat.customer_id)}
-                  className={`w-full flex items-center gap-3 p-3 text-left transition-colors hover:bg-muted/50 ${
-                    needsReply ? 'bg-warning/10 hover:bg-warning/15 border-l-2 border-l-warning' : isSelected ? 'bg-primary/10 border-l-2 border-l-primary' : ''
+                  className={`relative w-full flex items-center gap-3 p-3 pr-16 text-left transition-colors hover:bg-muted/50 ${
+                    needsReply ? 'border-l-2 border-l-warning' : isSelected ? 'bg-primary/10 border-l-2 border-l-primary' : ''
                   }`}
                 >
-                  <Avatar className={`h-10 w-10 shrink-0 ${needsReply ? 'ring-2 ring-warning/50' : ''}`}>
+                  {formattedLastMessageAt && (
+                    <span className={`absolute right-3 top-3 rounded px-1.5 py-0.5 text-[10px] font-semibold leading-none whitespace-nowrap ${
+                      needsReply ? 'bg-warning/10 text-warning' : 'bg-muted/50 text-muted-foreground'
+                    }`}>
+                      {formattedLastMessageAt}
+                    </span>
+                  )}
+                  <Avatar className={`h-10 w-10 shrink-0 ${needsReply ? 'ring-1 ring-warning/60' : ''}`}>
                     <AvatarFallback className="text-xs font-semibold bg-primary/20 text-primary">
                       {initials}
                     </AvatarFallback>
@@ -143,27 +150,10 @@ export function ChatList({
                           {chat.customer_name}
                         </span>
                         {needsReply && (
-                          <span className="mt-1 inline-flex max-w-full items-center gap-1 rounded-md bg-warning px-1.5 py-0.5 text-[10px] font-semibold leading-none text-warning-foreground">
+                          <span className="mt-1 inline-flex max-w-full items-center gap-1 rounded-md bg-warning/10 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-warning">
                             <Reply className="h-3 w-3 shrink-0" />
                             <span className="truncate">Pendiente de respuesta</span>
-                            {formattedLastMessageAt && (
-                              <span className="shrink-0 border-l border-warning-foreground/30 pl-1">
-                                {formattedLastMessageAt}
-                              </span>
-                            )}
                           </span>
-                        )}
-                      </div>
-                      <div className="flex w-[56px] shrink-0 flex-col items-end gap-1">
-                        {chat.last_message_at && (
-                          <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold leading-none whitespace-nowrap ${
-                            needsReply ? 'text-warning font-semibold' : 'text-muted-foreground'
-                          }`}>
-                            {formattedLastMessageAt}
-                          </span>
-                        )}
-                        {needsReply && (
-                          <span className="h-2 w-2 rounded-full bg-warning animate-pulse" aria-hidden="true" />
                         )}
                       </div>
                     </div>
