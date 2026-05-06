@@ -127,24 +127,17 @@ export function ChatList({
                 <button
                   key={chat.customer_id}
                   onClick={() => onSelect(chat.customer_id)}
-                  className={`relative w-full flex items-center gap-3 p-3 pr-16 text-left transition-colors hover:bg-muted/50 ${
+                  className={`w-full flex items-start gap-3 p-3 text-left transition-colors hover:bg-muted/50 ${
                     needsReply ? 'border-l-2 border-l-warning' : isSelected ? 'bg-primary/10 border-l-2 border-l-primary' : ''
                   }`}
                 >
-                  {formattedLastMessageAt && (
-                    <span className={`absolute right-3 top-3 rounded px-1.5 py-0.5 text-[10px] font-semibold leading-none whitespace-nowrap ${
-                      needsReply ? 'bg-warning/10 text-warning' : 'bg-muted/50 text-muted-foreground'
-                    }`}>
-                      {formattedLastMessageAt}
-                    </span>
-                  )}
                   <Avatar className={`h-10 w-10 shrink-0 ${needsReply ? 'ring-1 ring-warning/60' : ''}`}>
                     <AvatarFallback className="text-xs font-semibold bg-primary/20 text-primary">
                       {initials}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-start gap-2">
                       <div className="min-w-0 flex-1">
                         <span className="block font-medium text-sm text-foreground truncate">
                           {chat.customer_name}
@@ -156,6 +149,13 @@ export function ChatList({
                           </span>
                         )}
                       </div>
+                      {formattedLastMessageAt && (
+                        <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold leading-none whitespace-nowrap ${
+                          needsReply ? 'bg-warning/10 text-warning' : 'bg-muted text-muted-foreground'
+                        }`}>
+                          {formattedLastMessageAt}
+                        </span>
+                      )}
                     </div>
                     <p className={`text-xs truncate mt-1 ${needsReply ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
                       {chat.last_message}
