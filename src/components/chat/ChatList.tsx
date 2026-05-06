@@ -115,7 +115,14 @@ export function ChatList({
                 lastMessageType &&
                 !["outgoing", "sent", "bot", "ai", "assistant", "system"].includes(lastMessageType)
               );
-              const needsReply = chat.chat_status === "revision" && isCustomerMessage;
+
+              // Pending reply: only if incoming message within last 24h
+              const minsAgo = chat.last_message_at ? differenceInMinutes(new Date(), new Date(chat.last_message_at)) : Infinity;
+              const isWithin24h = minsAgo <= 1440;
+              const needsReply = chat.chat_status === "revision" && isCustomerMessage && isWithin24h;
+              const isUrgent = needsReply && minsAgo <= 60; // within 1 hour = red
+              // needsReply && !isUrgent = orange (1h-24h)
+
               const initials = chat.customer_name
                 .split(' ')
                 .map(w => w[0])
@@ -128,10 +135,12 @@ export function ChatList({
                   key={chat.customer_id}
                   onClick={() => onSelect(chat.customer_id)}
                   className={`w-full grid grid-cols-[40px_minmax(0,1fr)] gap-3 p-3 text-left transition-colors hover:bg-muted/50 ${
-                    needsReply ? 'border-l-2 border-l-warning' : isSelected ? 'bg-primary/10 border-l-2 border-l-primary' : ''
+                    needsReply
+                      ? isUrgent ? 'border-l-2 border-l-destructive' : 'border-l-2 border-l-orange-500'
+                      : isSelected ? 'bg-primary/10 border-l-2 border-l-primary' : ''
                   }`}
                 >
-                  <Avatar className={`h-10 w-10 shrink-0 ${needsReply ? 'ring-1 ring-warning/60' : ''}`}>
+                  <Avatar className={`h-10 w-10 shrink-0 ${needsReply ? isUrgent ? 'ring-1 ring-destructive/60' : 'ring-1 ring-orange-500/60' : ''}`}>
                     <AvatarFallback className="text-xs font-semibold bg-primary/20 text-primary">
                       {initials}
                     </AvatarFallback>
@@ -143,7 +152,9 @@ export function ChatList({
                           {chat.customer_name}
                         </span>
                         {needsReply && (
-                          <span className="mt-1 inline-flex max-w-full items-center gap-1 rounded-md bg-warning/10 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-warning">
+                          <span className={`mt-1 inline-flex max-w-full items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold leading-none ${
+                            isUrgent ? 'bg-destructive/10 text-destructive' : 'bg-orange-500/10 text-orange-500'
+                          }`}>
                             <Reply className="h-3 w-3 shrink-0" />
                             <span className="truncate">Pendiente de respuesta</span>
                           </span>
@@ -151,7 +162,9 @@ export function ChatList({
                       </div>
                       {formattedLastMessageAt && (
                         <span className={`justify-self-end rounded-md px-1.5 py-0.5 text-right text-[10px] font-semibold leading-none whitespace-nowrap ${
-                          needsReply ? 'bg-warning/10 text-warning' : 'bg-muted text-muted-foreground'
+                          needsReply
+                            ? isUrgent ? 'bg-destructive/10 text-destructive' : 'bg-orange-500/10 text-orange-500'
+                            : 'bg-muted text-muted-foreground'
                         }`}>
                           {formattedLastMessageAt}
                         </span>
@@ -179,7 +192,7 @@ export function ChatList({
                           <ShoppingCart className="w-3 h-3" /> Venta
                         </Badge>
                       ) : null}
-                      <span className={`text-[10px] whitespace-nowrap ${needsReply ? 'text-warning' : 'text-muted-foreground'}`}>
+                      <span className={`text-[10px] whitespace-nowrap ${needsReply ? (isUrgent ? 'text-destructive' : 'text-orange-500') : 'text-muted-foreground'}`}>
                         {chat.message_count} msgs{formattedLastMessageAt ? ` · ${formattedLastMessageAt}` : ''}
                       </span>
                     </div>
