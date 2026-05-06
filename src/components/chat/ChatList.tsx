@@ -150,7 +150,7 @@ export function ChatList({
                         )}
                       </div>
                       {formattedLastMessageAt && (
-                        <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold leading-none whitespace-nowrap ${
+                        <span className={`shrink-0 min-w-[42px] rounded-md px-1.5 py-0.5 text-right text-[10px] font-semibold leading-none whitespace-nowrap ${
                           needsReply ? 'bg-warning/10 text-warning' : 'bg-muted text-muted-foreground'
                         }`}>
                           {formattedLastMessageAt}
@@ -179,8 +179,8 @@ export function ChatList({
                           <ShoppingCart className="w-3 h-3" /> Venta
                         </Badge>
                       ) : null}
-                      <span className="text-[10px] text-muted-foreground">
-                        {chat.message_count} msgs
+                      <span className={`text-[10px] whitespace-nowrap ${needsReply ? 'text-warning' : 'text-muted-foreground'}`}>
+                        {chat.message_count} msgs{formattedLastMessageAt ? ` · ${formattedLastMessageAt}` : ''}
                       </span>
                     </div>
                   </div>
