@@ -7,11 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Bot, User, MessageSquare, Phone, CheckCircle, ShoppingCart, Eye, Send } from "lucide-react";
+import { Bot, User, MessageSquare, Phone, CheckCircle, ShoppingCart, Eye, Send, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import type { ChatMessage } from "@/hooks/useChatHistory";
 import { useSetChatClassification, useToggleConversationMode, useSendMessage } from "@/hooks/useChatHistory";
+import type { FetchNextPageOptions, InfiniteQueryObserverResult } from "@tanstack/react-query";
 
 interface ChatConversationProps {
   messages: ChatMessage[];
@@ -21,6 +22,10 @@ interface ChatConversationProps {
   customerId: string | null;
   chatStatus: string;
   conversationMode: string;
+  hasOlderMessages?: boolean;
+  loadOlderMessages?: (options?: FetchNextPageOptions) => Promise<InfiniteQueryObserverResult>;
+  isLoadingOlder?: boolean;
+  totalMessageCount?: number;
 }
 
 const STATUS_OPTIONS = [
