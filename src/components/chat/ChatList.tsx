@@ -1,9 +1,10 @@
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Search, Bot, MessageSquare, CheckCircle, ShoppingCart, Eye } from "lucide-react";
+import { Search, Bot, MessageSquare, CheckCircle, ShoppingCart, Eye, ChevronLeft, ChevronRight } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import type { ChatSummary, ChatFilter } from "@/hooks/useChatHistory";
