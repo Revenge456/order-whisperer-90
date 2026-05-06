@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Search, Bot, MessageSquare, CheckCircle, ShoppingCart, Eye, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Bot, MessageSquare, CheckCircle, ShoppingCart, Eye, ChevronLeft, ChevronRight, Reply } from "lucide-react";
 import { format, isToday, isYesterday, differenceInMinutes, isThisWeek, isThisYear } from "date-fns";
 import { es } from "date-fns/locale";
 import type { ChatSummary, ChatFilter } from "@/hooks/useChatHistory";
@@ -108,6 +108,13 @@ export function ChatList({
           <div className="divide-y divide-border">
             {chats.map((chat) => {
               const isSelected = selectedId === chat.customer_id;
+              const lastMessageType = chat.last_message_type?.toLowerCase() ?? "";
+              const isCustomerMessage = Boolean(
+                chat.last_message_at &&
+                lastMessageType &&
+                !["outgoing", "sent", "bot", "ai", "assistant", "system"].includes(lastMessageType)
+              );
+              const needsReply = chat.chat_status === "revision" && isCustomerMessage;
               const initials = chat.customer_name
                 .split(' ')
                 .map(w => w[0])
@@ -120,28 +127,41 @@ export function ChatList({
                   key={chat.customer_id}
                   onClick={() => onSelect(chat.customer_id)}
                   className={`w-full flex items-center gap-3 p-3 text-left transition-colors hover:bg-muted/50 ${
-                    isSelected ? 'bg-primary/10 border-l-2 border-l-primary' : ''
+                    needsReply ? 'bg-warning/10 hover:bg-warning/15 border-l-2 border-l-warning' : isSelected ? 'bg-primary/10 border-l-2 border-l-primary' : ''
                   }`}
                 >
-                  <Avatar className="h-10 w-10 shrink-0">
+                  <Avatar className={`h-10 w-10 shrink-0 ${needsReply ? 'ring-2 ring-warning/50' : ''}`}>
                     <AvatarFallback className="text-xs font-semibold bg-primary/20 text-primary">
                       {initials}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1">
-                      <span className="font-medium text-sm text-foreground truncate min-w-0 flex-1">
-                        {chat.customer_name}
-                      </span>
-                      {chat.last_message_at && (
-                        <span className={`text-[10px] whitespace-nowrap shrink-0 ${
-                          chat.last_message_type === 'incoming' ? 'text-primary font-semibold' : 'text-muted-foreground'
-                        }`}>
-                          {formatWhatsAppTime(chat.last_message_at)}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <span className="block font-medium text-sm text-foreground truncate">
+                          {chat.customer_name}
                         </span>
-                      )}
+                        {needsReply && (
+                          <span className="mt-1 inline-flex max-w-full items-center gap-1 rounded-md bg-warning px-1.5 py-0.5 text-[10px] font-semibold leading-none text-warning-foreground">
+                            <Reply className="h-3 w-3 shrink-0" />
+                            <span className="truncate">Pendiente de respuesta</span>
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex shrink-0 flex-col items-end gap-1">
+                        {chat.last_message_at && (
+                          <span className={`text-[10px] whitespace-nowrap ${
+                            needsReply ? 'text-warning font-semibold' : 'text-muted-foreground'
+                          }`}>
+                            {formatWhatsAppTime(chat.last_message_at)}
+                          </span>
+                        )}
+                        {needsReply && (
+                          <span className="h-2 w-2 rounded-full bg-warning animate-pulse" aria-hidden="true" />
+                        )}
+                      </div>
                     </div>
-                    <p className="text-xs text-muted-foreground truncate mt-0.5">
+                    <p className={`text-xs truncate mt-1 ${needsReply ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
                       {chat.last_message}
                     </p>
                     <div className="flex items-center gap-1.5 mt-1">
@@ -166,12 +186,6 @@ export function ChatList({
                       <span className="text-[10px] text-muted-foreground">
                         {chat.message_count} msgs
                       </span>
-                      <span className="flex-1" />
-                      {chat.last_message_type === 'incoming' && (
-                        <Badge className="text-[10px] px-1.5 py-0 gap-1 bg-primary/15 text-primary border-0 shrink-0">
-                          <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-pulse" /> Pendiente
-                        </Badge>
-                      )}
                     </div>
                   </div>
                 </button>
