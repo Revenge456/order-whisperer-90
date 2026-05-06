@@ -192,7 +192,7 @@ export function ChatList({
                           <ShoppingCart className="w-3 h-3" /> Venta
                         </Badge>
                       ) : null}
-                      <span className={`text-[10px] whitespace-nowrap ${needsReply ? 'text-warning' : 'text-muted-foreground'}`}>
+                      <span className={`text-[10px] whitespace-nowrap ${needsReply ? (isUrgent ? 'text-destructive' : 'text-orange-500') : 'text-muted-foreground'}`}>
                         {chat.message_count} msgs{formattedLastMessageAt ? ` · ${formattedLastMessageAt}` : ''}
                       </span>
                     </div>
