@@ -42,6 +42,10 @@ export function ChatConversation({
   customerId,
   chatStatus,
   conversationMode,
+  hasOlderMessages,
+  loadOlderMessages,
+  isLoadingOlder,
+  totalMessageCount,
 }: ChatConversationProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const setClassification = useSetChatClassification();
