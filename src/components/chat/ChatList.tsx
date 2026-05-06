@@ -129,15 +129,22 @@ export function ChatList({
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
                       <span className="font-medium text-sm text-foreground truncate min-w-0 flex-1">
                         {chat.customer_name}
                       </span>
+                      {chat.last_message_at && (
+                        <span className={`text-[10px] whitespace-nowrap shrink-0 ${
+                          chat.last_message_type === 'incoming' ? 'text-primary font-semibold' : 'text-muted-foreground'
+                        }`}>
+                          {formatWhatsAppTime(chat.last_message_at)}
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-muted-foreground truncate mt-0.5">
                       {chat.last_message}
                     </p>
-                    <div className="flex items-center gap-2 mt-1">
+                    <div className="flex items-center gap-1.5 mt-1">
                       {chat.conversation_mode === 'ai' && (
                         <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1 border-primary/30 text-primary">
                           <Bot className="w-3 h-3" /> AI
@@ -159,16 +166,10 @@ export function ChatList({
                       <span className="text-[10px] text-muted-foreground">
                         {chat.message_count} msgs
                       </span>
-                      {chat.last_message_at && (
-                        <span className={`text-[10px] whitespace-nowrap flex items-center gap-1 ${
-                          chat.last_message_type === 'incoming' ? 'text-primary font-semibold' : 'text-muted-foreground'
-                        }`}>
-                          {formatWhatsAppTime(chat.last_message_at)}
-                        </span>
-                      )}
+                      <span className="flex-1" />
                       {chat.last_message_type === 'incoming' && (
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1 border-primary/30 text-primary">
-                          <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary" /> Pendiente
+                        <Badge className="text-[10px] px-1.5 py-0 gap-1 bg-primary/15 text-primary border-0 shrink-0">
+                          <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-pulse" /> Pendiente
                         </Badge>
                       )}
                     </div>
