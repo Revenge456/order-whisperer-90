@@ -127,7 +127,7 @@ export function ChatList({
                 <button
                   key={chat.customer_id}
                   onClick={() => onSelect(chat.customer_id)}
-                  className={`w-full flex items-start gap-3 p-3 text-left transition-colors hover:bg-muted/50 ${
+                  className={`w-full grid grid-cols-[40px_minmax(0,1fr)] gap-3 p-3 text-left transition-colors hover:bg-muted/50 ${
                     needsReply ? 'border-l-2 border-l-warning' : isSelected ? 'bg-primary/10 border-l-2 border-l-primary' : ''
                   }`}
                 >
@@ -136,8 +136,8 @@ export function ChatList({
                       {initials}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start gap-2">
+                  <div className="min-w-0">
+                    <div className="grid grid-cols-[minmax(0,1fr)_52px] items-start gap-2">
                       <div className="min-w-0 flex-1">
                         <span className="block font-medium text-sm text-foreground truncate">
                           {chat.customer_name}
@@ -150,7 +150,7 @@ export function ChatList({
                         )}
                       </div>
                       {formattedLastMessageAt && (
-                        <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold leading-none whitespace-nowrap ${
+                        <span className={`justify-self-end rounded-md px-1.5 py-0.5 text-right text-[10px] font-semibold leading-none whitespace-nowrap ${
                           needsReply ? 'bg-warning/10 text-warning' : 'bg-muted text-muted-foreground'
                         }`}>
                           {formattedLastMessageAt}
@@ -160,7 +160,7 @@ export function ChatList({
                     <p className={`text-xs truncate mt-1 ${needsReply ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
                       {chat.last_message}
                     </p>
-                    <div className="flex items-center gap-1.5 mt-1">
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
                       {chat.conversation_mode === 'ai' && (
                         <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1 border-primary/30 text-primary">
                           <Bot className="w-3 h-3" /> AI
@@ -179,8 +179,8 @@ export function ChatList({
                           <ShoppingCart className="w-3 h-3" /> Venta
                         </Badge>
                       ) : null}
-                      <span className="text-[10px] text-muted-foreground">
-                        {chat.message_count} msgs
+                      <span className={`text-[10px] whitespace-nowrap ${needsReply ? 'text-warning' : 'text-muted-foreground'}`}>
+                        {chat.message_count} msgs{formattedLastMessageAt ? ` · ${formattedLastMessageAt}` : ''}
                       </span>
                     </div>
                   </div>
