@@ -115,7 +115,14 @@ export function ChatList({
                 lastMessageType &&
                 !["outgoing", "sent", "bot", "ai", "assistant", "system"].includes(lastMessageType)
               );
-              const needsReply = chat.chat_status === "revision" && isCustomerMessage;
+
+              // Pending reply: only if incoming message within last 24h
+              const minsAgo = chat.last_message_at ? differenceInMinutes(new Date(), new Date(chat.last_message_at)) : Infinity;
+              const isWithin24h = minsAgo <= 1440;
+              const needsReply = chat.chat_status === "revision" && isCustomerMessage && isWithin24h;
+              const isUrgent = needsReply && minsAgo <= 60; // within 1 hour = red
+              // needsReply && !isUrgent = orange (1h-24h)
+
               const initials = chat.customer_name
                 .split(' ')
                 .map(w => w[0])
