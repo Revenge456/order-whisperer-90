@@ -5,15 +5,37 @@ import { ChatConversation } from "@/components/chat/ChatConversation";
 import { useChatList, useChatMessages } from "@/hooks/useChatHistory";
 import type { ChatFilter } from "@/hooks/useChatHistory";
 
+const PAGE_SIZE = 50;
+
 export default function ChatHistory() {
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<ChatFilter>('all');
+  const [page, setPage] = useState(0);
 
-  const { data: chatList, isLoading: listLoading, totalCustomers } = useChatList(search, filterStatus);
-  const { data: messages = [], isLoading: messagesLoading } = useChatMessages(selectedCustomerId);
+  const { data: chatList, isLoading: listLoading, totalCount } = useChatList(search, filterStatus, page);
+  const {
+    data: messages = [],
+    isLoading: messagesLoading,
+    hasNextPage,
+    fetchNextPage,
+    isFetchingNextPage,
+    totalCount: messageCount,
+  } = useChatMessages(selectedCustomerId);
 
   const selectedChat = chatList.find(c => c.customer_id === selectedCustomerId);
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+
+  // Reset page when search/filter changes
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setPage(0);
+  };
+
+  const handleFilterChange = (value: ChatFilter) => {
+    setFilterStatus(value);
+    setPage(0);
+  };
 
   return (
     <DashboardLayout>
@@ -26,10 +48,13 @@ export default function ChatHistory() {
             selectedId={selectedCustomerId}
             onSelect={setSelectedCustomerId}
             search={search}
-            onSearchChange={setSearch}
+            onSearchChange={handleSearchChange}
             filterStatus={filterStatus}
-            onFilterChange={setFilterStatus}
-            totalCount={totalCustomers}
+            onFilterChange={handleFilterChange}
+            totalCount={totalCount}
+            page={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
           />
         </div>
 
@@ -42,6 +67,10 @@ export default function ChatHistory() {
           customerId={selectedCustomerId}
           chatStatus={selectedChat?.chat_status ?? 'revision'}
           conversationMode={selectedChat?.conversation_mode ?? 'ai'}
+          hasOlderMessages={!!hasNextPage}
+          loadOlderMessages={fetchNextPage}
+          isLoadingOlder={isFetchingNextPage}
+          totalMessageCount={messageCount}
         />
       </div>
     </DashboardLayout>
