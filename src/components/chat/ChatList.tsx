@@ -129,20 +129,10 @@ export function ChatList({
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
                       <span className="font-medium text-sm text-foreground truncate min-w-0 flex-1">
                         {chat.customer_name}
                       </span>
-                      {chat.last_message_at && (
-                        <span className={`text-[10px] whitespace-nowrap shrink-0 flex items-center gap-1 ${
-                          chat.last_message_type === 'incoming' ? 'text-primary font-semibold' : 'text-muted-foreground'
-                        }`}>
-                          {formatWhatsAppTime(chat.last_message_at)}
-                          {chat.last_message_type === 'incoming' && (
-                            <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary" />
-                          )}
-                        </span>
-                      )}
                     </div>
                     <p className="text-xs text-muted-foreground truncate mt-0.5">
                       {chat.last_message}
@@ -169,6 +159,18 @@ export function ChatList({
                       <span className="text-[10px] text-muted-foreground">
                         {chat.message_count} msgs
                       </span>
+                      {chat.last_message_at && (
+                        <span className={`text-[10px] whitespace-nowrap flex items-center gap-1 ${
+                          chat.last_message_type === 'incoming' ? 'text-primary font-semibold' : 'text-muted-foreground'
+                        }`}>
+                          {formatWhatsAppTime(chat.last_message_at)}
+                        </span>
+                      )}
+                      {chat.last_message_type === 'incoming' && (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1 border-primary/30 text-primary">
+                          <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary" /> Pendiente
+                        </Badge>
+                      )}
                     </div>
                   </div>
                 </button>
