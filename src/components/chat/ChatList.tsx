@@ -20,6 +20,9 @@ interface ChatListProps {
   filterStatus: ChatFilter;
   onFilterChange: (value: ChatFilter) => void;
   totalCount?: number;
+  page?: number;
+  totalPages?: number;
+  onPageChange?: (page: number) => void;
 }
 
 export function ChatList({
@@ -32,6 +35,9 @@ export function ChatList({
   filterStatus,
   onFilterChange,
   totalCount,
+  page = 0,
+  totalPages = 1,
+  onPageChange,
 }: ChatListProps) {
   const badgeCount = totalCount ?? chats.length;
   return (
