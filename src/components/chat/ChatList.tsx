@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Search, Bot, MessageSquare, CheckCircle, ShoppingCart, Eye, ChevronLeft, ChevronRight, Reply } from "lucide-react";
+import { Search, Bot, MessageSquare, CheckCircle, ShoppingCart, Eye, ChevronLeft, ChevronRight, Reply, Clock } from "lucide-react";
 import { format, isToday, isYesterday, differenceInMinutes, isThisWeek, isThisYear } from "date-fns";
 import { es } from "date-fns/locale";
 import type { ChatSummary, ChatFilter } from "@/hooks/useChatHistory";
@@ -192,6 +192,14 @@ export function ChatList({
                       <span className="text-[10px] text-muted-foreground">
                         {chat.message_count} msgs
                       </span>
+                      {formattedLastMessageAt && (
+                        <span className={`ml-auto inline-flex items-center gap-1 text-[10px] font-medium whitespace-nowrap ${
+                          needsReply ? 'text-warning' : 'text-muted-foreground'
+                        }`}>
+                          <Clock className="h-3 w-3" />
+                          Últ. {formattedLastMessageAt}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </button>
