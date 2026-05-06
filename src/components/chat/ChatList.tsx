@@ -135,10 +135,12 @@ export function ChatList({
                   key={chat.customer_id}
                   onClick={() => onSelect(chat.customer_id)}
                   className={`w-full grid grid-cols-[40px_minmax(0,1fr)] gap-3 p-3 text-left transition-colors hover:bg-muted/50 ${
-                    needsReply ? 'border-l-2 border-l-warning' : isSelected ? 'bg-primary/10 border-l-2 border-l-primary' : ''
+                    needsReply
+                      ? isUrgent ? 'border-l-2 border-l-destructive' : 'border-l-2 border-l-orange-500'
+                      : isSelected ? 'bg-primary/10 border-l-2 border-l-primary' : ''
                   }`}
                 >
-                  <Avatar className={`h-10 w-10 shrink-0 ${needsReply ? 'ring-1 ring-warning/60' : ''}`}>
+                  <Avatar className={`h-10 w-10 shrink-0 ${needsReply ? isUrgent ? 'ring-1 ring-destructive/60' : 'ring-1 ring-orange-500/60' : ''}`}>
                     <AvatarFallback className="text-xs font-semibold bg-primary/20 text-primary">
                       {initials}
                     </AvatarFallback>
@@ -150,7 +152,9 @@ export function ChatList({
                           {chat.customer_name}
                         </span>
                         {needsReply && (
-                          <span className="mt-1 inline-flex max-w-full items-center gap-1 rounded-md bg-warning/10 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-warning">
+                          <span className={`mt-1 inline-flex max-w-full items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold leading-none ${
+                            isUrgent ? 'bg-destructive/10 text-destructive' : 'bg-orange-500/10 text-orange-500'
+                          }`}>
                             <Reply className="h-3 w-3 shrink-0" />
                             <span className="truncate">Pendiente de respuesta</span>
                           </span>
@@ -158,7 +162,9 @@ export function ChatList({
                       </div>
                       {formattedLastMessageAt && (
                         <span className={`justify-self-end rounded-md px-1.5 py-0.5 text-right text-[10px] font-semibold leading-none whitespace-nowrap ${
-                          needsReply ? 'bg-warning/10 text-warning' : 'bg-muted text-muted-foreground'
+                          needsReply
+                            ? isUrgent ? 'bg-destructive/10 text-destructive' : 'bg-orange-500/10 text-orange-500'
+                            : 'bg-muted text-muted-foreground'
                         }`}>
                           {formattedLastMessageAt}
                         </span>
