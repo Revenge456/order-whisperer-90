@@ -147,7 +147,7 @@ export function ChatConversation({
         </Select>
 
         <Badge variant="secondary" className="text-xs">
-          {messages.length} msgs
+          {totalMessageCount ?? messages.length} msgs
         </Badge>
       </div>
 
