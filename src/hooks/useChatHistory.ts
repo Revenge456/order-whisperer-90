@@ -21,6 +21,7 @@ export interface ChatSummary {
   customer_phone: string;
   last_message: string;
   last_message_at: string;
+  last_message_type: string;
   message_count: number;
   chat_status: string;
   conversation_mode: string;
@@ -106,6 +107,7 @@ async function fetchFromView(search: string, filterStatus: ChatFilter, page: num
     customer_phone: row.customer_phone,
     last_message: row.last_message || "",
     last_message_at: row.last_message_at || "",
+    last_message_type: row.last_message_type || "",
     message_count: row.message_count || 0,
     chat_status: row.chat_status || "revision",
     conversation_mode: row.conversation_mode || "ai",
@@ -181,6 +183,7 @@ async function fetchFallback(search: string, filterStatus: ChatFilter, page: num
       customer_phone: c.phone,
       last_message: msg?.content || "",
       last_message_at: msg?.created_at || "",
+      last_message_type: msg?.message_type || "",
       message_count: 0, // Not available in fallback without expensive count
       chat_status: (c as any).chat_status || "revision",
       conversation_mode: c.conversation_mode || "ai",

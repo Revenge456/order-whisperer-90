@@ -548,6 +548,13 @@ export type Database = {
             foreignKeyName: "orders_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
+            referencedRelation: "chat_list_view"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "orders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
             referencedRelation: "customer_stats_view"
             referencedColumns: ["id"]
           },
@@ -1010,6 +1017,13 @@ export type Database = {
             foreignKeyName: "system_notifications_related_customer_id_fkey"
             columns: ["related_customer_id"]
             isOneToOne: false
+            referencedRelation: "chat_list_view"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "system_notifications_related_customer_id_fkey"
+            columns: ["related_customer_id"]
+            isOneToOne: false
             referencedRelation: "customer_stats_view"
             referencedColumns: ["id"]
           },
@@ -1291,6 +1305,13 @@ export type Database = {
             foreignKeyName: "whatsapp_logs_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
+            referencedRelation: "chat_list_view"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "whatsapp_logs_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
             referencedRelation: "customer_stats_view"
             referencedColumns: ["id"]
           },
@@ -1331,6 +1352,22 @@ export type Database = {
           products: Json | null
           status: Database["public"]["Enums"]["delivery_status"] | null
           total: number | null
+        }
+        Relationships: []
+      }
+      chat_list_view: {
+        Row: {
+          chat_status: string | null
+          conversation_mode:
+            | Database["public"]["Enums"]["conversation_mode"]
+            | null
+          customer_id: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          last_message: string | null
+          last_message_at: string | null
+          last_message_type: string | null
+          message_count: number | null
         }
         Relationships: []
       }
@@ -1417,6 +1454,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "active_deliveries_view"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "orders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "chat_list_view"
             referencedColumns: ["customer_id"]
           },
           {
