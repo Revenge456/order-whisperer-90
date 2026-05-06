@@ -130,17 +130,19 @@ export function ChatList({
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="font-medium text-sm text-foreground truncate">
+                      <span className="font-medium text-sm text-foreground truncate min-w-0 flex-1">
                         {chat.customer_name}
                       </span>
-                      <span className={`text-[10px] whitespace-nowrap ${
-                        chat.last_message_type === 'incoming' ? 'text-primary font-semibold' : 'text-muted-foreground'
-                      }`}>
-                        {chat.last_message_at ? formatWhatsAppTime(chat.last_message_at) : ""}
-                        {chat.last_message_type === 'incoming' && (
-                          <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary ml-1 align-middle" />
-                        )}
-                      </span>
+                      {chat.last_message_at && (
+                        <span className={`text-[10px] whitespace-nowrap shrink-0 flex items-center gap-1 ${
+                          chat.last_message_type === 'incoming' ? 'text-primary font-semibold' : 'text-muted-foreground'
+                        }`}>
+                          {formatWhatsAppTime(chat.last_message_at)}
+                          {chat.last_message_type === 'incoming' && (
+                            <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary" />
+                          )}
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-muted-foreground truncate mt-0.5">
                       {chat.last_message}
