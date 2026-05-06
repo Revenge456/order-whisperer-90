@@ -21,6 +21,7 @@ export interface ChatSummary {
   customer_phone: string;
   last_message: string;
   last_message_at: string;
+  last_message_type: string;
   message_count: number;
   chat_status: string;
   conversation_mode: string;
