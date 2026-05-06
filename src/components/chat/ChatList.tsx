@@ -23,7 +23,6 @@ function formatWhatsAppTime(dateStr: string): string {
   if (isThisYear(date)) return format(date, "d MMM", { locale: es });
   return format(date, "d/M/yyyy");
 }
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface ChatListProps {
   chats: ChatSummary[];
@@ -134,11 +133,13 @@ export function ChatList({
                       <span className="font-medium text-sm text-foreground truncate">
                         {chat.customer_name}
                       </span>
-                      <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                        {formatDistanceToNow(new Date(chat.last_message_at), {
-                          addSuffix: true,
-                          locale: es,
-                        })}
+                      <span className={`text-[10px] whitespace-nowrap ${
+                        chat.last_message_type === 'incoming' ? 'text-primary font-semibold' : 'text-muted-foreground'
+                      }`}>
+                        {chat.last_message_at ? formatWhatsAppTime(chat.last_message_at) : ""}
+                        {chat.last_message_type === 'incoming' && (
+                          <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary ml-1 align-middle" />
+                        )}
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground truncate mt-0.5">
