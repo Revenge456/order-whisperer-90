@@ -108,6 +108,7 @@ export function ChatList({
           <div className="divide-y divide-border">
             {chats.map((chat) => {
               const isSelected = selectedId === chat.customer_id;
+              const formattedLastMessageAt = chat.last_message_at ? formatWhatsAppTime(chat.last_message_at) : "";
               const lastMessageType = chat.last_message_type?.toLowerCase() ?? "";
               const isCustomerMessage = Boolean(
                 chat.last_message_at &&
@@ -145,6 +146,11 @@ export function ChatList({
                           <span className="mt-1 inline-flex max-w-full items-center gap-1 rounded-md bg-warning px-1.5 py-0.5 text-[10px] font-semibold leading-none text-warning-foreground">
                             <Reply className="h-3 w-3 shrink-0" />
                             <span className="truncate">Pendiente de respuesta</span>
+                            {formattedLastMessageAt && (
+                              <span className="shrink-0 border-l border-warning-foreground/30 pl-1">
+                                {formattedLastMessageAt}
+                              </span>
+                            )}
                           </span>
                         )}
                       </div>
@@ -153,7 +159,7 @@ export function ChatList({
                           <span className={`text-[10px] whitespace-nowrap ${
                             needsReply ? 'text-warning font-semibold' : 'text-muted-foreground'
                           }`}>
-                            {formatWhatsAppTime(chat.last_message_at)}
+                            {formattedLastMessageAt}
                           </span>
                         )}
                         {needsReply && (
