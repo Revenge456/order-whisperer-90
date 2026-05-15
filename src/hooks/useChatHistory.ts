@@ -276,7 +276,20 @@ export function useChatMessages(customerId: string | null) {
         .order("created_at", { ascending: false })
         .range(from, to);
 
-      if (error) throw error;
+      if (error) {
+        const code = (error as any)?.code;
+        const status = (error as any)?.status;
+        const msg = String(error?.message || '').toLowerCase();
+        const isAuthError =
+          code === 'PGRST301' ||
+          status === 401 ||
+          msg.includes('jwt expired') ||
+          msg.includes('jwt');
+        if (isAuthError) {
+          await supabase.auth.signOut();
+        }
+        throw error;
+      }
 
       const messages = (data as ChatMessage[]) || [];
       const totalCount = count ?? 0;
