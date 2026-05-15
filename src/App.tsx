@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { useAuthListener } from "@/hooks/useAuthListener";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Customers from "./pages/Customers";
@@ -18,7 +19,93 @@ import Broadcasts from "./pages/Broadcasts";
 import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,
+      refetchOnWindowFocus: true,
+      refetchOnReconnect: true,
+      retry: (failureCount, error: any) => {
+        const msg = String(error?.message || '').toLowerCase();
+        if (msg.includes('jwt') || msg.includes('401')) return false;
+        return failureCount < 1;
+      },
+    },
+  },
+});
+
+function AppRoutes() {
+  useAuthListener();
+
+  return (
+    <Routes>
+      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/auth" element={<Auth />} />
+
+      {/* Protected routes with page permissions */}
+      <Route path="/dashboard" element={
+        <ProtectedRoute pageKey="dashboard">
+          <Dashboard />
+        </ProtectedRoute>
+      } />
+      <Route path="/notifications" element={
+        <ProtectedRoute pageKey="dashboard">
+          <Notifications />
+        </ProtectedRoute>
+      } />
+      <Route path="/customers" element={
+        <ProtectedRoute pageKey="customers">
+          <Customers />
+        </ProtectedRoute>
+      } />
+      <Route path="/orders" element={
+        <ProtectedRoute pageKey="orders">
+          <Orders />
+        </ProtectedRoute>
+      } />
+      <Route path="/deliveries" element={
+        <ProtectedRoute pageKey="deliveries">
+          <Deliveries />
+        </ProtectedRoute>
+      } />
+      <Route path="/products" element={
+        <ProtectedRoute pageKey="products">
+          <Products />
+        </ProtectedRoute>
+      } />
+      <Route path="/sucursales" element={
+        <ProtectedRoute pageKey="products">
+          <Sucursales />
+        </ProtectedRoute>
+      } />
+      <Route path="/reports" element={
+        <ProtectedRoute pageKey="reports">
+          <Reports />
+        </ProtectedRoute>
+      } />
+      <Route path="/team" element={
+        <ProtectedRoute pageKey="team">
+          <Team />
+        </ProtectedRoute>
+      } />
+      <Route path="/chats" element={
+        <ProtectedRoute pageKey="chats">
+          <ChatHistory />
+        </ProtectedRoute>
+      } />
+      <Route path="/broadcasts" element={
+        <ProtectedRoute pageKey="broadcasts">
+          <Broadcasts />
+        </ProtectedRoute>
+      } />
+
+      {/* Redirect old routes */}
+      <Route path="/payments" element={<Navigate to="/orders" replace />} />
+      <Route path="/settings" element={<Navigate to="/team" replace />} />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -26,72 +113,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/auth" element={<Auth />} />
-          
-          {/* Protected routes with page permissions */}
-          <Route path="/dashboard" element={
-            <ProtectedRoute pageKey="dashboard">
-              <Dashboard />
-            </ProtectedRoute>
-          } />
-          <Route path="/notifications" element={
-            <ProtectedRoute pageKey="dashboard">
-              <Notifications />
-            </ProtectedRoute>
-          } />
-          <Route path="/customers" element={
-            <ProtectedRoute pageKey="customers">
-              <Customers />
-            </ProtectedRoute>
-          } />
-          <Route path="/orders" element={
-            <ProtectedRoute pageKey="orders">
-              <Orders />
-            </ProtectedRoute>
-          } />
-          <Route path="/deliveries" element={
-            <ProtectedRoute pageKey="deliveries">
-              <Deliveries />
-            </ProtectedRoute>
-          } />
-          <Route path="/products" element={
-            <ProtectedRoute pageKey="products">
-              <Products />
-            </ProtectedRoute>
-          } />
-          <Route path="/sucursales" element={
-            <ProtectedRoute pageKey="products">
-              <Sucursales />
-            </ProtectedRoute>
-          } />
-          <Route path="/reports" element={
-            <ProtectedRoute pageKey="reports">
-              <Reports />
-            </ProtectedRoute>
-          } />
-          <Route path="/team" element={
-            <ProtectedRoute pageKey="team">
-              <Team />
-            </ProtectedRoute>
-          } />
-          <Route path="/chats" element={
-            <ProtectedRoute pageKey="chats">
-              <ChatHistory />
-            </ProtectedRoute>
-          } />
-          <Route path="/broadcasts" element={
-            <ProtectedRoute pageKey="broadcasts">
-              <Broadcasts />
-            </ProtectedRoute>
-          } />
-          
-          {/* Redirect old routes */}
-          <Route path="/payments" element={<Navigate to="/orders" replace />} />
-          <Route path="/settings" element={<Navigate to="/team" replace />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <AppRoutes />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
