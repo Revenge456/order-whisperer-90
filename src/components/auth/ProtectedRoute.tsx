@@ -51,7 +51,7 @@ export function ProtectedRoute({ children, pageKey }: ProtectedRouteProps) {
     }
   }
 
-  return <>{children}</>;
+  return <AuthBootstrap>{children}</AuthBootstrap>;
 }
 
 export function AdminRoute({ children }: { children: ReactNode }) {
