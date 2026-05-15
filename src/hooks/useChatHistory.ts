@@ -335,7 +335,16 @@ export function useChatMessages(customerId: string | null) {
           queryClient.invalidateQueries({ queryKey: ["chat-list"] });
         },
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (
+          status === 'CHANNEL_ERROR' ||
+          status === 'TIMED_OUT' ||
+          status === 'CLOSED'
+        ) {
+          queryClient.invalidateQueries({ queryKey: ['chat-messages', customerId] });
+          queryClient.invalidateQueries({ queryKey: ['chat-list'] });
+        }
+      });
 
     return () => {
       supabase.removeChannel(channel);
