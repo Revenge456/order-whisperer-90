@@ -1,6 +1,7 @@
 import { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useSession, usePagePermissions } from '@/hooks/useAuth';
+import { AuthBootstrap } from '@/components/auth/AuthBootstrap';
 import { Loader2 } from 'lucide-react';
 
 interface ProtectedRouteProps {
