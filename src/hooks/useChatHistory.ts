@@ -47,6 +47,8 @@ export interface ChatListResult {
  * Falls back to a two-query approach if the view doesn't exist yet.
  */
 export function useChatList(search: string, filterStatus: ChatFilter, page: number): Omit<ChatListResult, 'page' | 'setPage' | 'totalPages'> & { totalCount: number } {
+  const queryClient = useQueryClient();
+
   const {
     data,
     isLoading,
@@ -54,16 +56,67 @@ export function useChatList(search: string, filterStatus: ChatFilter, page: numb
   } = useQuery({
     queryKey: ["chat-list", search, filterStatus, page],
     queryFn: async () => {
-      // Try the optimized view first
       try {
         return await fetchFromView(search, filterStatus, page);
-      } catch (viewError) {
-        console.warn("chat_list_view not available, falling back to two-query approach", viewError);
+      } catch (err: any) {
+        const code = err?.code;
+        const status = err?.status;
+        const msg = String(err?.message || '').toLowerCase();
+        const isAuthError =
+          code === 'PGRST301' ||
+          status === 401 ||
+          msg.includes('jwt expired') ||
+          msg.includes('jwt');
+
+        if (isAuthError) {
+          await supabase.auth.signOut();
+          throw err; // global listener redirects to /auth
+        }
+
+        console.warn("[useChatList] view failed, falling back", err);
         return await fetchFallback(search, filterStatus, page);
       }
     },
-    staleTime: 30_000, // 30s before refetch
+    staleTime: 30_000,
   });
+
+  // Global realtime subscription for chat list updates (debounced 1s)
+  useEffect(() => {
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    const invalidateDebounced = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['chat-list'] });
+        queryClient.invalidateQueries({ queryKey: ['chat-customers'] });
+      }, 1000);
+    };
+
+    const channel = supabase
+      .channel('chat-list-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'whatsapp_logs',
+        },
+        invalidateDebounced,
+      )
+      .subscribe((status) => {
+        if (
+          status === 'CHANNEL_ERROR' ||
+          status === 'TIMED_OUT' ||
+          status === 'CLOSED'
+        ) {
+          invalidateDebounced();
+        }
+      });
+
+    return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   return {
     data: data?.items ?? [],
