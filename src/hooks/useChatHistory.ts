@@ -91,7 +91,17 @@ export function useChatList(search: string, filterStatus: ChatFilter, page: numb
       }, 1000);
     };
 
-    const channel = supabase
+    const handleStatus = (status: string) => {
+      if (
+        status === 'CHANNEL_ERROR' ||
+        status === 'TIMED_OUT' ||
+        status === 'CLOSED'
+      ) {
+        invalidateDebounced();
+      }
+    };
+
+    const logsChannel = supabase
       .channel('chat-list-realtime')
       .on(
         'postgres_changes',
@@ -102,19 +112,25 @@ export function useChatList(search: string, filterStatus: ChatFilter, page: numb
         },
         invalidateDebounced,
       )
-      .subscribe((status) => {
-        if (
-          status === 'CHANNEL_ERROR' ||
-          status === 'TIMED_OUT' ||
-          status === 'CLOSED'
-        ) {
-          invalidateDebounced();
-        }
-      });
+      .subscribe(handleStatus);
+
+    const customersChannel = supabase
+      .channel('customers-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'customers',
+        },
+        invalidateDebounced,
+      )
+      .subscribe(handleStatus);
 
     return () => {
       if (debounceTimer) clearTimeout(debounceTimer);
-      supabase.removeChannel(channel);
+      supabase.removeChannel(logsChannel);
+      supabase.removeChannel(customersChannel);
     };
   }, [queryClient]);
 
