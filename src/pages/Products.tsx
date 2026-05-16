@@ -24,6 +24,7 @@ import {
   useDeleteProduct,
 } from "@/hooks/useProducts";
 import { ProductModal } from "@/components/modals/ProductModal";
+import { CategoryManagerModal } from "@/components/modals/CategoryManagerModal";
 import { ProductImageLightbox } from "@/components/products/ProductImageLightbox";
 import { ProductImageUpload } from "@/components/products/ProductImageUpload";
 import { DynamicTable, RecordDetailSheet } from "@/components/dynamic-table";
