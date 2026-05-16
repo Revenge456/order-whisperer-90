@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Search, AlertTriangle } from "lucide-react";
+import { Plus, Search, AlertTriangle, Tag } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +24,7 @@ import {
   useDeleteProduct,
 } from "@/hooks/useProducts";
 import { ProductModal } from "@/components/modals/ProductModal";
+import { CategoryManagerModal } from "@/components/modals/CategoryManagerModal";
 import { ProductImageLightbox } from "@/components/products/ProductImageLightbox";
 import { ProductImageUpload } from "@/components/products/ProductImageUpload";
 import { DynamicTable, RecordDetailSheet } from "@/components/dynamic-table";
@@ -53,6 +54,7 @@ export default function Products() {
   const [categoryFilter, setCategoryFilter] = useState<string>(searchParams.get('cat') ?? 'all');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<Product | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -232,10 +234,16 @@ export default function Products() {
             <h1 className="text-3xl font-bold text-foreground">Productos</h1>
             <p className="text-muted-foreground mt-1">Inventario y catálogo de productos</p>
           </div>
-          <Button onClick={handleNewProduct} className="bg-primary text-primary-foreground hover:bg-primary/90">
-            <Plus className="w-4 h-4 mr-2" />
-            Nuevo Producto
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => setIsCategoryManagerOpen(true)} variant="outline">
+              <Tag className="w-4 h-4 mr-2" />
+              Gestionar categorías
+            </Button>
+            <Button onClick={handleNewProduct} className="bg-primary text-primary-foreground hover:bg-primary/90">
+              <Plus className="w-4 h-4 mr-2" />
+              Nuevo Producto
+            </Button>
+          </div>
         </div>
 
         {/* Search and Filters */}
@@ -354,6 +362,11 @@ export default function Products() {
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
         product={editingProduct}
+      />
+
+      <CategoryManagerModal
+        open={isCategoryManagerOpen}
+        onOpenChange={setIsCategoryManagerOpen}
       />
 
       <RecordDetailSheet
