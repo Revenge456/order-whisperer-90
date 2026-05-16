@@ -234,10 +234,16 @@ export default function Products() {
             <h1 className="text-3xl font-bold text-foreground">Productos</h1>
             <p className="text-muted-foreground mt-1">Inventario y catálogo de productos</p>
           </div>
-          <Button onClick={handleNewProduct} className="bg-primary text-primary-foreground hover:bg-primary/90">
-            <Plus className="w-4 h-4 mr-2" />
-            Nuevo Producto
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => setIsCategoryManagerOpen(true)} variant="outline">
+              <Tag className="w-4 h-4 mr-2" />
+              Gestionar categorías
+            </Button>
+            <Button onClick={handleNewProduct} className="bg-primary text-primary-foreground hover:bg-primary/90">
+              <Plus className="w-4 h-4 mr-2" />
+              Nuevo Producto
+            </Button>
+          </div>
         </div>
 
         {/* Search and Filters */}
