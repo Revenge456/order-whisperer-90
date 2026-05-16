@@ -89,11 +89,12 @@ export function SucursalCard({ sucursal, onEdit }: Props) {
             Editar
           </Button>
           <Button
-            variant="destructive"
+            variant="outline"
             size="sm"
             onClick={() => setConfirmOpen(true)}
             disabled={del.isPending}
             aria-label={`Eliminar sucursal ${sucursal.nombre}`}
+            className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
           >
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
