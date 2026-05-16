@@ -1,10 +1,21 @@
+import { useState } from 'react';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Pencil } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import type { Sucursal } from '@/hooks/useSucursales';
-import { useUpdateSucursal } from '@/hooks/useSucursales';
+import { useUpdateSucursal, useDeleteSucursal } from '@/hooks/useSucursales';
 
 interface Props {
   sucursal: Sucursal;
@@ -13,6 +24,8 @@ interface Props {
 
 export function SucursalCard({ sucursal, onEdit }: Props) {
   const update = useUpdateSucursal();
+  const del = useDeleteSucursal();
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const photos = sucursal.photo_urls || [];
   const aliases = sucursal.aliases || [];
 
@@ -70,11 +83,45 @@ export function SucursalCard({ sucursal, onEdit }: Props) {
           />
           <span className="text-xs text-muted-foreground">#{sucursal.sort_order}</span>
         </div>
-        <Button variant="outline" size="sm" onClick={() => onEdit(sucursal)}>
-          <Pencil className="h-3.5 w-3.5 mr-1" />
-          Editar
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => onEdit(sucursal)}>
+            <Pencil className="h-3.5 w-3.5 mr-1" />
+            Editar
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => setConfirmOpen(true)}
+            disabled={del.isPending}
+            aria-label={`Eliminar sucursal ${sucursal.nombre}`}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
       </CardFooter>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar sucursal {sucursal.nombre}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. La sucursal y sus fotos se borrarán
+              permanentemente, y el bot dejará de ofrecerla a los clientes.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() =>
+                del.mutate({ id: sucursal.id, photo_urls: sucursal.photo_urls || [] })
+              }
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
