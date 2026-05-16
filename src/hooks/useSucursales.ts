@@ -99,3 +99,47 @@ export function useDeleteSucursalPhoto() {
     onError: (e: any) => toast.error('Error al borrar foto: ' + e.message),
   });
 }
+
+function extractStoragePath(url: string, bucket: string): string | null {
+  const match = url.match(/\/storage\/v1\/object\/public\/(.+)/);
+  if (!match) return null;
+  const fullPath = decodeURIComponent(match[1]);
+  const prefix = bucket + '/';
+  if (!fullPath.startsWith(prefix)) return null;
+  return fullPath.substring(prefix.length);
+}
+
+export function useDeleteSucursal() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, photo_urls }: { id: number; photo_urls: string[] }) => {
+      // a) Try to delete photos first (best-effort)
+      const paths = (photo_urls || [])
+        .map((u) => extractStoragePath(u, SUCURSALES_BUCKET))
+        .filter((p): p is string => !!p);
+      if (paths.length) {
+        try {
+          const { error: storageErr } = await supabase.storage
+            .from(SUCURSALES_BUCKET)
+            .remove(paths);
+          if (storageErr) {
+            console.warn('[deleteSucursal] storage cleanup failed:', storageErr.message);
+          }
+        } catch (e) {
+          console.warn('[deleteSucursal] storage cleanup threw:', e);
+        }
+      }
+      // b) Delete row — surface real error
+      const { error } = await (supabase as any)
+        .from('sucursales')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['sucursales'] });
+      toast.success('Sucursal eliminada');
+    },
+    onError: (e: any) => toast.error('No se pudo eliminar: ' + (e?.message || 'error desconocido')),
+  });
+}
