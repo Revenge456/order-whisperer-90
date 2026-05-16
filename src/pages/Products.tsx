@@ -364,6 +364,11 @@ export default function Products() {
         product={editingProduct}
       />
 
+      <CategoryManagerModal
+        open={isCategoryManagerOpen}
+        onOpenChange={setIsCategoryManagerOpen}
+      />
+
       <RecordDetailSheet
         open={isDetailOpen}
         onOpenChange={setIsDetailOpen}
