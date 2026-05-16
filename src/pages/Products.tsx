@@ -54,6 +54,7 @@ export default function Products() {
   const [categoryFilter, setCategoryFilter] = useState<string>(searchParams.get('cat') ?? 'all');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<Product | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
