@@ -1,10 +1,21 @@
+import { useState } from 'react';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Pencil } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import type { Sucursal } from '@/hooks/useSucursales';
-import { useUpdateSucursal } from '@/hooks/useSucursales';
+import { useUpdateSucursal, useDeleteSucursal } from '@/hooks/useSucursales';
 
 interface Props {
   sucursal: Sucursal;
@@ -13,6 +24,8 @@ interface Props {
 
 export function SucursalCard({ sucursal, onEdit }: Props) {
   const update = useUpdateSucursal();
+  const del = useDeleteSucursal();
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const photos = sucursal.photo_urls || [];
   const aliases = sucursal.aliases || [];
 
